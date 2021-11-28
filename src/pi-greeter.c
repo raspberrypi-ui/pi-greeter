@@ -554,12 +554,9 @@ static void draw_background (cairo_t *c, GdkPixbuf *bg, gint m_width, gint m_hei
 }
 
 static gboolean
-background_window_expose (GtkWidget    *widget,
-                                       GdkEventExpose *event,
-                                       gpointer user_data)
+background_window_draw (GtkWidget *widget, cairo_t *cr, gpointer user_data)
 {
     GdkWindow *wd = gtk_widget_get_window (widget);
-    cairo_t *cr = gdk_cairo_create (wd);
     draw_background (cr, default_background_pixbuf, gdk_window_get_width (wd), gdk_window_get_height (wd));
     return FALSE;
 }
@@ -1816,7 +1813,7 @@ main (int argc, char **argv)
 
             backgrounds = g_slist_prepend(backgrounds, window);
             gtk_widget_show (window);
-            g_signal_connect (G_OBJECT (window), "expose-event", G_CALLBACK (background_window_expose), NULL);
+            g_signal_connect (G_OBJECT (window), "draw", G_CALLBACK (background_window_draw), NULL);
             gtk_widget_queue_draw (GTK_WIDGET(window));
         }
     }
