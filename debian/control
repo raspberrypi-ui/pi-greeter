@@ -3,7 +3,8 @@ Section: x11
 Priority: optional
 Maintainer: Simon Long <simon@raspberrypi.org>
 Build-Depends: debhelper (>= 9), pkg-config, libgtk2.0-dev, 
-  liblightdm-gobject-dev (>= 1.3.5), intltool, autotools-dev
+  liblightdm-gobject-dev (>= 1.3.5), intltool, autotools-dev,
+  gobject-introspection, gnome-common
 Standards-Version: 3.9.5
 Homepage: http://raspberrypi.org/
 
