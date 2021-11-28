@@ -69,10 +69,9 @@ static gchar *current_language;
 /* Screensaver values */
 int timeout, interval, prefer_blanking, allow_exposures;
 
-static GdkColor *default_background_color = NULL;
+static GdkRGBA *default_background_color = NULL;
 static gboolean cancelling = FALSE, prompted = FALSE;
 static gboolean prompt_active = FALSE, password_prompted = FALSE;
-static GdkRegion *window_region = NULL;
 static gchar *wp_mode = NULL;
 
 typedef struct
@@ -497,73 +496,15 @@ center_window (GtkWindow *window, GtkAllocation *unused, const WindowPosition *p
                      monitor_geometry.y + get_absolute_position (&pos->y, monitor_geometry.height, allocation.height));
 }
 
-static GdkRegion *
-cairo_region_from_rectangle (gint width, gint height, gint radius)
-{
-    GdkRegion *region;
-
-    gint x = radius, y = 0;
-    gint xChange = 1 - (radius << 1);
-    gint yChange = 0;
-    gint radiusError = 0;
-
-    GdkRectangle rect;
-
-    rect.x = radius;
-    rect.y = radius;
-    rect.width = width - radius * 2;
-    rect.height = height - radius * 2;
-
-    region = gdk_region_rectangle (&rect);
-
-    while(x >= y)
-    {
-
-        rect.x = -x + radius;
-        rect.y = -y + radius;
-        rect.width = x - radius + width - rect.x;
-        rect.height =  y - radius + height - rect.y;
-
-        gdk_region_union_with_rect(region, &rect);
-
-        rect.x = -y + radius;
-        rect.y = -x + radius;
-        rect.width = y - radius + width - rect.x;
-        rect.height =  x - radius + height - rect.y;
-
-        gdk_region_union_with_rect(region, &rect);
-
-        y++;
-        radiusError += yChange;
-        yChange += 2;
-        if(((radiusError << 1) + xChange) > 0)
-        {
-            x--;
-            radiusError += xChange;
-            xChange += 2;
-        }
-   }
-
-   return region;
-}
-
+/* Use the much simpler fake transparency by drawing the window background with Cairo for Gtk3 */
 static gboolean
-login_window_size_allocate (GtkWidget *widget, GdkRectangle *allocation, gpointer user_data)
+login_window_draw (GtkWidget *widget, cairo_t *cr, gpointer user_data)
 {
-    gint    radius = 2;
+    gdk_cairo_set_source_rgba (cr, default_background_color);
+    cairo_paint (cr);
 
-    GdkWindow *window = gtk_widget_get_window (widget);
-    if (window_region)
-        gdk_region_destroy(window_region);
-    window_region = cairo_region_from_rectangle (allocation->width, allocation->height, radius);
-    if (window) {
-        gdk_window_shape_combine_region(window, window_region, 0, 0);
-        gdk_window_input_shape_combine_region(window, window_region, 0, 0);
-    }
-
-    return TRUE;
+    return FALSE;
 }
-
 
 static void draw_background (cairo_t *c, GdkPixbuf *bg, gint m_width, gint m_height)
 {
@@ -571,7 +512,7 @@ static void draw_background (cairo_t *c, GdkPixbuf *bg, gint m_width, gint m_hei
     gint p_height, p_width, offset_x = 0, offset_y = 0;
     gdouble scale_x, scale_y;
 
-    gdk_cairo_set_source_color (c, default_background_color);
+    gdk_cairo_set_source_rgba (c, default_background_color);
     cairo_rectangle (c, 0, 0, m_width, m_height);
     cairo_fill (c);
 
@@ -1611,7 +1552,7 @@ focus_upon_map (GdkXEvent *gxevent, GdkEvent *event, gpointer  data)
 
         /* Check to see if this window is our onboard window, since we don't want to focus it. */
         if (keyboard_win)
-                keyboard_xid = gdk_x11_drawable_get_xid (keyboard_win);
+                keyboard_xid = gdk_x11_window_get_xid (keyboard_win);
 
         if (xwin != keyboard_xid
             && win_type != GDK_WINDOW_TYPE_HINT_TOOLTIP
@@ -1655,7 +1596,7 @@ main (int argc, char **argv)
     GtkCellRenderer *renderer;
     GtkWidget *infobar_compat, *content_area;
     gchar *value, *state_dir;
-    GdkColor background_color;
+    GdkRGBA background_color;
     GError *error = NULL;
 
     /* Background windows */
@@ -1683,9 +1624,6 @@ main (int argc, char **argv)
     textdomain (GETTEXT_PACKAGE);
 
     g_unix_signal_add(SIGTERM, (GSourceFunc)gtk_main_quit, NULL);
-
-    /* init threads */
-    gdk_threads_init();
 
     /* init gtk */
     gtk_init (&argc, &argv);
@@ -1720,10 +1658,10 @@ main (int argc, char **argv)
 
     /* Get background colour */
     value = g_key_file_get_value (config, "greeter", "desktop_bg", NULL);
-    if (!value || !gdk_color_parse (value, &background_color))
-            gdk_color_parse ("#C0C0C0", &background_color);
+    if (!value || !gdk_rgba_parse (&background_color, value))
+            gdk_rgba_parse (&background_color, "#C0C0C0");
     if (value) g_free (value);
-    default_background_color = gdk_color_copy (&background_color);
+    default_background_color = gdk_rgba_copy (&background_color);
 
     /* Get background image */
     value = g_key_file_get_value (config, "greeter", "wallpaper", NULL);
@@ -1814,7 +1752,7 @@ main (int argc, char **argv)
     cancel_button = GTK_BUTTON (gtk_builder_get_object (builder, "cancel_button"));
     login_button = GTK_BUTTON (gtk_builder_get_object (builder, "login_button"));
 
-    g_signal_connect (G_OBJECT (login_window), "size-allocate", G_CALLBACK (login_window_size_allocate), NULL);
+    g_signal_connect (G_OBJECT (login_window), "draw", G_CALLBACK (login_window_draw), NULL);
 
     /* To maintain compatability with GTK+2, set special properties here */
     gtk_container_set_border_width (GTK_CONTAINER(gtk_builder_get_object (builder, "vbox2")), 18);
@@ -1857,7 +1795,7 @@ main (int argc, char **argv)
     #endif
 
     /* Set up the background images */	
-    gdk_color_parse ("#000000", &background_color);
+    gdk_rgba_parse (&background_color, "#000000");
     for (scr = 0; scr < numScreens; scr++)
     {
         screen = gdk_display_get_screen (gdk_display_get_default (), scr);
@@ -1867,7 +1805,8 @@ main (int argc, char **argv)
         
             window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
             gtk_window_set_type_hint(GTK_WINDOW(window), GDK_WINDOW_TYPE_HINT_DESKTOP);
-            gtk_widget_modify_bg(GTK_WIDGET(window), GTK_STATE_NORMAL, &background_color);
+            gtk_widget_override_background_color(GTK_WIDGET(window), GTK_STATE_FLAG_NORMAL, &background_color);
+            //gtk_widget_modify_bg(GTK_WIDGET(window), GTK_STATE_NORMAL, &background_color);
             gtk_window_set_screen(GTK_WINDOW(window), screen);
             gtk_window_set_keep_below(GTK_WINDOW(window), TRUE);
             gtk_widget_set_size_request(window, monitor_geometry.width, monitor_geometry.height);
@@ -1930,9 +1869,7 @@ main (int argc, char **argv)
     gdk_window_set_events (root_window, gdk_window_get_events (root_window) | GDK_SUBSTRUCTURE_MASK);
     gdk_window_add_filter (root_window, focus_upon_map, NULL);
 
-    gdk_threads_enter();
     gtk_main ();
-    gdk_threads_leave();
 
 #ifdef START_INDICATOR_SERVICES
     if (indicator_pid)
@@ -1951,7 +1888,7 @@ main (int argc, char **argv)
     if (default_background_pixbuf)
         g_object_unref (default_background_pixbuf);
     if (default_background_color)
-        gdk_color_free (default_background_color);
+        gdk_rgba_free (default_background_color);
 
     {
 	int screen = XDefaultScreen (display);
