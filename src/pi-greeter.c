@@ -1317,6 +1317,42 @@ load_user_list (void)
     g_free (last_user);
 }
 
+static int screen_width (GdkScreen *scr)
+{
+    GdkDisplay *disp = gdk_screen_get_display (scr == NULL ? gdk_screen_get_default () : scr);
+    GdkMonitor *mon;
+    GdkRectangle rect;
+    int min = -1, max = 0, i;
+
+    for (i = 0; i < gdk_display_get_n_monitors (disp); i++)
+    {
+        mon = gdk_display_get_monitor (disp, i);
+        gdk_monitor_get_geometry (mon, &rect);
+        if (min == -1 || rect.x < min) min = rect.x;
+        if (rect.x + rect.width > max) max = rect.x + rect.width;
+    }
+
+    return max - min;
+}
+
+static int screen_height (GdkScreen *scr)
+{
+    GdkDisplay *disp = gdk_screen_get_display (scr == NULL ? gdk_screen_get_default () : scr);
+    GdkMonitor *mon;
+    GdkRectangle rect;
+    int min = -1, max = 0, i;
+
+    for (i = 0; i < gdk_display_get_n_monitors (disp); i++)
+    {
+        mon = gdk_display_get_monitor (disp, i);
+        gdk_monitor_get_geometry (mon, &rect);
+        if (min == -1 || rect.y < min) min = rect.y;
+        if (rect.y + rect.height > max) max = rect.y + rect.height;
+    }
+
+    return max - min;
+}
+
 /* The following code for setting a RetainPermanent background pixmap was taken
    originally from Gnome, with some fixes from MATE. see:
    https://github.com/mate-desktop/mate-desktop/blob/master/libmate-desktop/mate-bg.c */
@@ -1328,12 +1364,12 @@ create_root_surface (GdkScreen *screen)
     Pixmap pixmap;
     cairo_surface_t *surface;
 
-    number = gdk_screen_get_number (screen);
-    width = gdk_screen_get_width (screen);
-    height = gdk_screen_get_height (screen);
+    number = 0;
+    width = screen_width (screen);
+    height = screen_height (screen);
 
     /* Open a new connection so with Retain Permanent so the pixmap remains when the greeter quits */
-    gdk_flush ();
+    gdk_display_flush (gdk_display_get_default ());
     display = XOpenDisplay (gdk_display_get_name (gdk_screen_get_display (screen)));
     if (!display)
     {
@@ -1650,7 +1686,7 @@ main (int argc, char **argv)
         return EXIT_FAILURE;
 
     /* Set default cursor */
-    gdk_window_set_cursor (gdk_get_default_root_window (), gdk_cursor_new (GDK_LEFT_PTR));
+    gdk_window_set_cursor (gdk_get_default_root_window (), gdk_cursor_new_for_display (gdk_display_get_default (), GDK_LEFT_PTR));
 
     /* Get background colour */
     value = g_key_file_get_value (config, "greeter", "desktop_bg", NULL);
