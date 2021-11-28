@@ -1397,7 +1397,7 @@ set_root_pixmap_id (GdkScreen *screen,
                          Display *display,
                          Pixmap xpixmap)
 {
-    Window xroot = RootWindow (display, gdk_screen_get_number (screen));
+    Window xroot = RootWindow (display, 0);
     char *atom_names[] = {"_XROOTPMAP_ID", "ESETROOT_PMAP_ID"};
     Atom atoms[G_N_ELEMENTS(atom_names)] = {0};
 
@@ -1481,7 +1481,7 @@ set_surface_as_root (GdkScreen *screen, cairo_surface_t *surface)
      */
     Display *display = GDK_DISPLAY_XDISPLAY (gdk_screen_get_display (screen));
     Pixmap pixmap_id = cairo_xlib_surface_get_drawable (surface);
-    Window xroot = RootWindow (display, gdk_screen_get_number (screen));
+    Window xroot = RootWindow (display, 0);
 
     XGrabServer (display);
 
@@ -1533,7 +1533,7 @@ set_background (GdkPixbuf *new_bg)
         cairo_destroy (c);
 
         /* Refresh background */
-        gdk_flush ();
+        gdk_display_flush (gdk_display_get_default ());
         set_surface_as_root (screen, surface);
         cairo_surface_destroy (surface);
     }
