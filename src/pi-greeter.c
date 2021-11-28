@@ -485,11 +485,10 @@ get_absolute_position (const DimensionPosition *p, gint screen, gint window)
 static void
 center_window (GtkWindow *window, GtkAllocation *unused, const WindowPosition *pos)
 {   
-    GdkScreen *screen = gtk_window_get_screen (window);
     GtkAllocation allocation;
     GdkRectangle monitor_geometry;
 
-    gdk_screen_get_monitor_geometry (screen, gdk_screen_get_primary_monitor (screen), &monitor_geometry);
+    gdk_monitor_get_geometry (gdk_display_get_primary_monitor (gdk_display_get_default ()), &monitor_geometry);
     gtk_widget_get_allocation (GTK_WIDGET (window), &allocation);
     gtk_window_move (window,
                      monitor_geometry.x + get_absolute_position (&pos->x, monitor_geometry.width, allocation.width),
@@ -1487,9 +1486,9 @@ set_background (GdkPixbuf *new_bg)
         surface = create_root_surface (screen);
         c = cairo_create (surface);
 
-        for (monitor = 0; monitor < gdk_screen_get_n_monitors (screen); monitor++)
+        for (monitor = 0; monitor < gdk_display_get_n_monitors (gdk_display_get_default ()); monitor++)
         {
-            gdk_screen_get_monitor_geometry (screen, monitor, &monitor_geometry);
+            gdk_monitor_get_geometry (gdk_display_get_monitor (gdk_display_get_default (), monitor), &monitor_geometry);
             draw_background (c, bg, monitor_geometry.width, monitor_geometry.height);
             iter = g_slist_nth (backgrounds, monitor);
             gtk_widget_queue_draw (GTK_WIDGET (iter->data));
@@ -1796,9 +1795,9 @@ main (int argc, char **argv)
     for (scr = 0; scr < numScreens; scr++)
     {
         screen = gdk_display_get_screen (gdk_display_get_default (), scr);
-        for (monitor = 0; monitor < gdk_screen_get_n_monitors (screen); monitor++)
+        for (monitor = 0; monitor < gdk_display_get_n_monitors (gdk_display_get_default ()); monitor++)
         {
-            gdk_screen_get_monitor_geometry (screen, monitor, &monitor_geometry);
+            gdk_monitor_get_geometry (gdk_display_get_monitor (gdk_display_get_default (), monitor), &monitor_geometry);
         
             window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
             gtk_window_set_type_hint(GTK_WINDOW(window), GDK_WINDOW_TYPE_HINT_DESKTOP);
