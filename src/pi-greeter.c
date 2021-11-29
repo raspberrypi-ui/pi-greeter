@@ -1619,13 +1619,12 @@ main (int argc, char **argv)
     GdkRectangle monitor_geometry;
     GtkBuilder *builder;
     GtkCellRenderer *renderer;
-    GtkWidget *infobar_compat, *content_area;
     gchar *value, *state_dir;
     GdkRGBA background_color;
     GError *error = NULL;
 
     /* Background windows */
-    gint monitor, scr;
+    gint monitor;
     GdkScreen *screen;
     GtkWidget *window;
 
@@ -1757,33 +1756,12 @@ main (int argc, char **argv)
     user_combo = GTK_COMBO_BOX (gtk_builder_get_object (builder, "user_combobox"));
     username_entry = GTK_ENTRY (gtk_builder_get_object (builder, "username_entry"));
     password_entry = GTK_ENTRY (gtk_builder_get_object (builder, "password_entry"));
-
-    /* Add InfoBar via code for GTK+2 compatability */
-    infobar_compat = GTK_WIDGET(gtk_builder_get_object(builder, "infobar_compat"));
-    info_bar = GTK_INFO_BAR (gtk_info_bar_new());
-    gtk_info_bar_set_message_type(info_bar, GTK_MESSAGE_ERROR);
-    gtk_widget_set_name(GTK_WIDGET(info_bar), "greeter_infobar");
-    content_area = gtk_info_bar_get_content_area(info_bar);
-
+    info_bar = GTK_INFO_BAR (GTK_WIDGET(gtk_builder_get_object(builder, "greeter_infobar")));
     message_label = GTK_LABEL (gtk_builder_get_object (builder, "message_label"));
-    g_object_ref(message_label);
-    gtk_container_remove(GTK_CONTAINER(infobar_compat), GTK_WIDGET(message_label));
-    gtk_container_add(GTK_CONTAINER(content_area), GTK_WIDGET(message_label));
-    g_object_unref(message_label);
-
-    gtk_container_add(GTK_CONTAINER(infobar_compat), GTK_WIDGET(info_bar));
-
     cancel_button = GTK_BUTTON (gtk_builder_get_object (builder, "cancel_button"));
     login_button = GTK_BUTTON (gtk_builder_get_object (builder, "login_button"));
 
     g_signal_connect (G_OBJECT (login_window), "draw", G_CALLBACK (login_window_draw), NULL);
-
-    /* To maintain compatability with GTK+2, set special properties here */
-    gtk_container_set_border_width (GTK_CONTAINER(gtk_builder_get_object (builder, "vbox2")), 18);
-    gtk_container_set_border_width (GTK_CONTAINER(gtk_builder_get_object (builder, "content_frame")), 14);
-    gtk_container_set_border_width (GTK_CONTAINER(gtk_builder_get_object (builder, "buttonbox_frame")), 8);
-    gtk_widget_set_tooltip_text(GTK_WIDGET(password_entry), _("Enter your password"));
-    gtk_widget_set_tooltip_text(GTK_WIDGET(username_entry), _("Enter your username"));
 
 #ifdef START_INDICATOR_SERVICES
     init_indicators (config, &indicator_pid, &spi_pid);
