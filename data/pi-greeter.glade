@@ -216,9 +216,6 @@
               <object class="GtkGrid" id="table1">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
-                <property name="margin-left">24</property>
-                <property name="margin-right">24</property>
-                <property name="margin-top">24</property>
                 <property name="row-spacing">6</property>
                 <property name="column-spacing">18</property>
                 <child>
@@ -379,7 +376,6 @@
               <object class="GtkBox" id="hbox2">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
-                <property name="margin-bottom">24</property>
                 <property name="homogeneous">True</property>
                 <child>
                   <object class="GtkButton" id="login_button">
