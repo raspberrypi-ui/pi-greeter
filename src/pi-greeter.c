@@ -1793,7 +1793,6 @@ main (int argc, char **argv)
     //gtk_cell_layout_add_attribute (GTK_CELL_LAYOUT (user_combo), renderer, "weight", 2);
 
     /* Set up the background images */	
-    gdk_rgba_parse (&background_color, "#000000");
     screen = gdk_display_get_default_screen (gdk_display_get_default ());
     for (monitor = 0; monitor < gdk_display_get_n_monitors (gdk_display_get_default ()); monitor++)
     {
@@ -1801,8 +1800,6 @@ main (int argc, char **argv)
 
         window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
         gtk_window_set_type_hint(GTK_WINDOW(window), GDK_WINDOW_TYPE_HINT_DESKTOP);
-        gtk_widget_override_background_color(GTK_WIDGET(window), GTK_STATE_FLAG_NORMAL, &background_color);
-        //gtk_widget_modify_bg(GTK_WIDGET(window), GTK_STATE_NORMAL, &background_color);
         gtk_window_set_screen(GTK_WINDOW(window), screen);
         gtk_window_set_keep_below(GTK_WINDOW(window), TRUE);
         gtk_widget_set_size_request(window, monitor_geometry.width, monitor_geometry.height);
