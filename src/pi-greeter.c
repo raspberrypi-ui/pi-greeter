@@ -1426,7 +1426,7 @@ set_root_pixmap_id (GdkScreen *screen,
                 XFree (data_root);
                 XFree (data_esetroot);
 
-                gdk_error_trap_push ();
+                gdk_x11_display_error_trap_push (gdk_x11_lookup_xdisplay (display));
                 if (xrootpmap && xrootpmap == esetrootpmap) {
                     XKillClient (display, xrootpmap);
                 }
@@ -1435,7 +1435,7 @@ set_root_pixmap_id (GdkScreen *screen,
                 }
 
                 XSync (display, False);
-                gdk_error_trap_pop ();
+                gdk_x11_display_error_trap_pop (gdk_x11_lookup_xdisplay (display));
 
             }
         }
@@ -1499,44 +1499,37 @@ set_background (GdkPixbuf *new_bg)
     GdkRectangle monitor_geometry;
     GdkPixbuf *bg = NULL;
     GSList *iter;
-    gint i, num_screens = 1;
 
     if (new_bg)
         bg = new_bg;
     else
         bg = default_background_pixbuf;
 
-    #if GDK_VERSION_CUR_STABLE < G_ENCODE_VERSION(3, 10)
-        num_screens = gdk_display_get_n_screens (gdk_display_get_default ());
-    #endif
-
     /* Set the background */
-    for (i = 0; i < num_screens; i++)
+    GdkScreen *screen;
+    cairo_surface_t *surface;
+    cairo_t *c;
+    gint monitor;
+
+    screen = gdk_display_get_default_screen (gdk_display_get_default ());
+    surface = create_root_surface (screen);
+    c = cairo_create (surface);
+
+    for (monitor = 0; monitor < gdk_display_get_n_monitors (gdk_display_get_default ()); monitor++)
     {
-        GdkScreen *screen;
-        cairo_surface_t *surface;
-        cairo_t *c;
-        gint monitor;
-
-        screen = gdk_display_get_screen (gdk_display_get_default (), i);
-        surface = create_root_surface (screen);
-        c = cairo_create (surface);
-
-        for (monitor = 0; monitor < gdk_display_get_n_monitors (gdk_display_get_default ()); monitor++)
-        {
-            gdk_monitor_get_geometry (gdk_display_get_monitor (gdk_display_get_default (), monitor), &monitor_geometry);
-            draw_background (c, bg, monitor_geometry.width, monitor_geometry.height);
-            iter = g_slist_nth (backgrounds, monitor);
-            gtk_widget_queue_draw (GTK_WIDGET (iter->data));
-        }
-
-        cairo_destroy (c);
-
-        /* Refresh background */
-        gdk_display_flush (gdk_display_get_default ());
-        set_surface_as_root (screen, surface);
-        cairo_surface_destroy (surface);
+        gdk_monitor_get_geometry (gdk_display_get_monitor (gdk_display_get_default (), monitor), &monitor_geometry);
+        draw_background (c, bg, monitor_geometry.width, monitor_geometry.height);
+        iter = g_slist_nth (backgrounds, monitor);
+        gtk_widget_queue_draw (GTK_WIDGET (iter->data));
     }
+
+    cairo_destroy (c);
+
+    /* Refresh background */
+    gdk_display_flush (gdk_display_get_default ());
+    set_surface_as_root (screen, surface);
+    cairo_surface_destroy (surface);
+
     gtk_widget_queue_draw (GTK_WIDGET (login_window));
 }
 
@@ -1633,7 +1626,6 @@ main (int argc, char **argv)
 
     /* Background windows */
     gint monitor, scr;
-    gint numScreens = 1;
     GdkScreen *screen;
     GtkWidget *window;
 
@@ -1822,35 +1814,28 @@ main (int argc, char **argv)
     gtk_cell_layout_add_attribute (GTK_CELL_LAYOUT (user_combo), renderer, "text", 1);
     //gtk_cell_layout_add_attribute (GTK_CELL_LAYOUT (user_combo), renderer, "weight", 2);
 
-    #if GDK_VERSION_CUR_STABLE < G_ENCODE_VERSION(3, 10)
-        numScreens = gdk_display_get_n_screens (gdk_display_get_default());
-    #endif
-
     /* Set up the background images */	
     gdk_rgba_parse (&background_color, "#000000");
-    for (scr = 0; scr < numScreens; scr++)
+    screen = gdk_display_get_default_screen (gdk_display_get_default ());
+    for (monitor = 0; monitor < gdk_display_get_n_monitors (gdk_display_get_default ()); monitor++)
     {
-        screen = gdk_display_get_screen (gdk_display_get_default (), scr);
-        for (monitor = 0; monitor < gdk_display_get_n_monitors (gdk_display_get_default ()); monitor++)
-        {
-            gdk_monitor_get_geometry (gdk_display_get_monitor (gdk_display_get_default (), monitor), &monitor_geometry);
-        
-            window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-            gtk_window_set_type_hint(GTK_WINDOW(window), GDK_WINDOW_TYPE_HINT_DESKTOP);
-            gtk_widget_override_background_color(GTK_WIDGET(window), GTK_STATE_FLAG_NORMAL, &background_color);
-            //gtk_widget_modify_bg(GTK_WIDGET(window), GTK_STATE_NORMAL, &background_color);
-            gtk_window_set_screen(GTK_WINDOW(window), screen);
-            gtk_window_set_keep_below(GTK_WINDOW(window), TRUE);
-            gtk_widget_set_size_request(window, monitor_geometry.width, monitor_geometry.height);
-            gtk_window_set_resizable (GTK_WINDOW(window), FALSE);
-            gtk_widget_set_app_paintable (GTK_WIDGET(window), TRUE);
-            gtk_window_move (GTK_WINDOW(window), monitor_geometry.x, monitor_geometry.y);
+        gdk_monitor_get_geometry (gdk_display_get_monitor (gdk_display_get_default (), monitor), &monitor_geometry);
 
-            backgrounds = g_slist_prepend(backgrounds, window);
-            gtk_widget_show (window);
-            g_signal_connect (G_OBJECT (window), "draw", G_CALLBACK (background_window_draw), NULL);
-            gtk_widget_queue_draw (GTK_WIDGET(window));
-        }
+        window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+        gtk_window_set_type_hint(GTK_WINDOW(window), GDK_WINDOW_TYPE_HINT_DESKTOP);
+        gtk_widget_override_background_color(GTK_WIDGET(window), GTK_STATE_FLAG_NORMAL, &background_color);
+        //gtk_widget_modify_bg(GTK_WIDGET(window), GTK_STATE_NORMAL, &background_color);
+        gtk_window_set_screen(GTK_WINDOW(window), screen);
+        gtk_window_set_keep_below(GTK_WINDOW(window), TRUE);
+        gtk_widget_set_size_request(window, monitor_geometry.width, monitor_geometry.height);
+        gtk_window_set_resizable (GTK_WINDOW(window), FALSE);
+        gtk_widget_set_app_paintable (GTK_WIDGET(window), TRUE);
+        gtk_window_move (GTK_WINDOW(window), monitor_geometry.x, monitor_geometry.y);
+
+        backgrounds = g_slist_prepend(backgrounds, window);
+        gtk_widget_show (window);
+        g_signal_connect (G_OBJECT (window), "draw", G_CALLBACK (background_window_draw), NULL);
+        gtk_widget_queue_draw (GTK_WIDGET(window));
     }
     backgrounds = g_slist_reverse(backgrounds);
 
