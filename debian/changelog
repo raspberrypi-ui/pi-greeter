@@ -1,3 +1,9 @@
+pi-greeter (0.16) bullseye; urgency=medium
+
+  * GTK+3 version
+
+ -- Simon Long <simon@raspberrypi.com>  Thu, 03 Mar 2022 10:40:01 +0000
+
 pi-greeter (0.15) bullseye; urgency=medium
 
   * Update some defaults for bullseye
