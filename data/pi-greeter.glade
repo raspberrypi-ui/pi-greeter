@@ -238,7 +238,6 @@
                     <property name="can-focus">True</property>
                     <property name="visibility">False</property>
                     <property name="invisible-char">•</property>
-                    <property name="secondary-icon-tooltip-text" translatable="yes">Enter your password</property>
                     <signal name="activate" handler="login_cb" swapped="no"/>
                     <signal name="key-press-event" handler="password_key_press_cb" swapped="no"/>
                   </object>
@@ -253,7 +252,6 @@
                     <property name="can-focus">True</property>
                     <property name="no-show-all">True</property>
                     <property name="invisible-char">•</property>
-                    <property name="secondary-icon-tooltip-text" translatable="yes">Enter your username</property>
                     <signal name="focus-out-event" handler="username_focus_out_cb" swapped="no"/>
                     <signal name="key-press-event" handler="username_key_press_cb" swapped="no"/>
                   </object>
