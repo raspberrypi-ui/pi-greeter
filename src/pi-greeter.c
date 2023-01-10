@@ -17,8 +17,6 @@
 #include <stdlib.h>
 #endif
 
-#define WAYFIRE
-
 #include <glib-unix.h>
 
 #include <locale.h>
@@ -75,6 +73,8 @@ static GdkRGBA *default_background_color = NULL;
 static gboolean cancelling = FALSE, prompted = FALSE;
 static gboolean prompt_active = FALSE, password_prompted = FALSE;
 static gchar *wp_mode = NULL;
+
+static gboolean wayfire = FALSE;
 
 typedef struct
 {
@@ -245,7 +245,7 @@ is_valid_session (GList* items, const gchar* session)
 static gchar *
 get_session (void)
 {
-    return g_strdup (current_session);
+    return g_strdup (lightdm_greeter_get_default_session_hint (greeter));
 }
 
 static void
@@ -999,10 +999,9 @@ void
 login_cb (GtkWidget *widget)
 {
     /* Reset to default screensaver values */
-#ifndef WAYFIRE
-    if (lightdm_greeter_get_lock_hint (greeter))
+    if (!wayfire && lightdm_greeter_get_lock_hint (greeter))
         XSetScreenSaver(gdk_x11_display_get_xdisplay(gdk_display_get_default ()), timeout, interval, prefer_blanking, allow_exposures);        
-#endif
+    }
 
     gtk_widget_set_sensitive (GTK_WIDGET (username_entry), FALSE);
     gtk_widget_set_sensitive (GTK_WIDGET (password_entry), FALSE);
@@ -1500,10 +1499,15 @@ set_surface_as_root (GdkScreen *screen, cairo_surface_t *surface)
 static void
 set_background (GdkPixbuf *new_bg)
 {
-#ifndef WAYFIRE
     GdkRectangle monitor_geometry;
     GdkPixbuf *bg = NULL;
     GSList *iter;
+
+    if (wayfire)
+    {
+        gtk_widget_queue_draw (GTK_WIDGET (login_window));
+        return;
+    }
 
     if (new_bg)
         bg = new_bg;
@@ -1534,7 +1538,6 @@ set_background (GdkPixbuf *new_bg)
     gdk_display_flush (gdk_display_get_default ());
     set_surface_as_root (screen, surface);
     cairo_surface_destroy (surface);
-#endif
 
     gtk_widget_queue_draw (GTK_WIDGET (login_window));
 }
@@ -1639,6 +1642,8 @@ main (int argc, char **argv)
     #ifdef START_INDICATOR_SERVICES
     GPid indicator_pid = 0, spi_pid = 0;
     #endif
+
+    if (!system ("ps ax | grep wayfire | grep -qv grep")) wayfire = TRUE;
 
     /* Prevent memory from being swapped out, as we are dealing with passwords */
     mlockall (MCL_CURRENT | MCL_FUTURE);
@@ -1747,13 +1752,11 @@ main (int argc, char **argv)
     g_free (value);
 
     display = gdk_x11_display_get_xdisplay(gdk_display_get_default ());
-#ifndef WAYFIRE
-    if (lightdm_greeter_get_lock_hint (greeter)) {
+    if (!wayfire && lightdm_greeter_get_lock_hint (greeter)) {
         XGetScreenSaver(display, &timeout, &interval, &prefer_blanking, &allow_exposures);
         XForceScreenSaver(display, ScreenSaverActive);
         XSetScreenSaver(display, screensaver_timeout, 0, ScreenSaverActive, DefaultExposures);
     }
-#endif
 
     builder = gtk_builder_new ();
 	gtk_builder_add_from_file (builder, GREETER_DATA_DIR "/pi-greeter.glade", NULL);
@@ -1801,7 +1804,8 @@ main (int argc, char **argv)
     //gtk_cell_layout_add_attribute (GTK_CELL_LAYOUT (user_combo), renderer, "weight", 2);
 
     /* Set up the background images */	
-#ifndef WAYFIRE
+    if (!wayfire)
+    {
     screen = gdk_display_get_default_screen (gdk_display_get_default ());
     for (monitor = 0; monitor < gdk_display_get_n_monitors (gdk_display_get_default ()); monitor++)
     {
@@ -1822,7 +1826,7 @@ main (int argc, char **argv)
         gtk_widget_queue_draw (GTK_WIDGET(window));
     }
     backgrounds = g_slist_reverse(backgrounds);
-#endif
+    }
 
     if (lightdm_greeter_get_hide_users_hint (greeter))
     {
@@ -1860,10 +1864,11 @@ main (int argc, char **argv)
     gtk_builder_connect_signals(builder, greeter);
 
     gtk_widget_show (GTK_WIDGET (login_window));
-#ifndef WAYFIRE
+    if (!wayfire)
+    {
     center_window (login_window,  NULL, &main_window_pos);
     g_signal_connect (GTK_WIDGET (login_window), "size-allocate", G_CALLBACK (center_window), &main_window_pos);
-#endif
+    }
 
     gtk_widget_show (GTK_WIDGET (login_window));
     gdk_window_focus (gtk_widget_get_window (GTK_WIDGET (login_window)), GDK_CURRENT_TIME);
@@ -1894,7 +1899,7 @@ main (int argc, char **argv)
     if (default_background_color)
         gdk_rgba_free (default_background_color);
 
-#ifndef WAYFIRE
+    if (!wayfire)
     {
 	int screen = XDefaultScreen (display);
 	Window w = RootWindow (display, screen);
@@ -1905,7 +1910,6 @@ main (int argc, char **argv)
 		XSync (display, FALSE);
 	    }
     }
-#endif
 
     return EXIT_SUCCESS;
 }
