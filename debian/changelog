@@ -1,3 +1,9 @@
+pi-greeter (0.17) bullseye; urgency=medium
+
+  * Modify for Wayfire
+
+ -- Simon Long <simon@raspberrypi.com>  Mon, 09 Jan 2023 13:56:13 +0000
+
 pi-greeter (0.16) bullseye; urgency=medium
 
   * GTK+3 version

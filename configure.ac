@@ -27,6 +27,7 @@ PKG_CHECK_MODULES([GTK], [gtk+-3.0], [have_gtk3=yes])
 PKG_CHECK_MODULES([GMODULE], [gmodule-export-2.0])
 PKG_CHECK_MODULES([LIGHTDMGOBJECT], [liblightdm-gobject-1 >= 1.3.5])
 PKG_CHECK_MODULES([LIBX11], [x11])
+PKG_CHECK_MODULES([LAYERSHELL], [gtk-layer-shell-0 >= 0.6])
 
 dnl ###########################################################################
 dnl Optional dependencies

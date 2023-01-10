@@ -32,6 +32,7 @@
 #include <glib.h>
 #include <gdk/gdkkeysyms.h>
 #include <glib/gslist.h>
+#include <gtk-layer-shell/gtk-layer-shell.h>
 
 #include <lightdm.h>
 
@@ -1803,8 +1804,6 @@ main (int argc, char **argv)
     //gtk_cell_layout_add_attribute (GTK_CELL_LAYOUT (user_combo), renderer, "weight", 2);
 
     /* Set up the background images */	
-    if (!wayfire)
-    {
     screen = gdk_display_get_default_screen (gdk_display_get_default ());
     for (monitor = 0; monitor < gdk_display_get_n_monitors (gdk_display_get_default ()); monitor++)
     {
@@ -1821,11 +1820,16 @@ main (int argc, char **argv)
 
         backgrounds = g_slist_prepend(backgrounds, window);
         gtk_widget_show (window);
+        gtk_window_set_decorated (GTK_WINDOW (window), FALSE);
+        if (wayfire)
+        {
+            gtk_layer_init_for_window (window);
+            gtk_layer_set_layer (window, GTK_LAYER_SHELL_LAYER_BACKGROUND);
+        }
         g_signal_connect (G_OBJECT (window), "draw", G_CALLBACK (background_window_draw), NULL);
         gtk_widget_queue_draw (GTK_WIDGET(window));
     }
     backgrounds = g_slist_reverse(backgrounds);
-    }
 
     if (lightdm_greeter_get_hide_users_hint (greeter))
     {
@@ -1870,6 +1874,8 @@ main (int argc, char **argv)
     }
 
     gtk_widget_show (GTK_WIDGET (login_window));
+    gtk_window_set_decorated (login_window, FALSE);
+    if (wayfire) gtk_window_set_default_size (login_window, 1, 1); // hack to force window to resize under wayfire
     gdk_window_focus (gtk_widget_get_window (GTK_WIDGET (login_window)), GDK_CURRENT_TIME);
 
     /* focus fix (source: unity-greeter) */
