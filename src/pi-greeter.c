@@ -1001,7 +1001,6 @@ login_cb (GtkWidget *widget)
     /* Reset to default screensaver values */
     if (!wayfire && lightdm_greeter_get_lock_hint (greeter))
         XSetScreenSaver(gdk_x11_display_get_xdisplay(gdk_display_get_default ()), timeout, interval, prefer_blanking, allow_exposures);        
-    }
 
     gtk_widget_set_sensitive (GTK_WIDGET (username_entry), FALSE);
     gtk_widget_set_sensitive (GTK_WIDGET (password_entry), FALSE);
