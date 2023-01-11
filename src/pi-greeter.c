@@ -490,6 +490,7 @@ center_window (GtkWindow *window, GtkAllocation *unused, const WindowPosition *p
 {   
     GtkAllocation allocation;
     GdkRectangle monitor_geometry;
+    if (wayfire) return;
 
     gdk_monitor_get_geometry (gdk_display_get_primary_monitor (gdk_display_get_default ()), &monitor_geometry);
     gtk_widget_get_allocation (GTK_WIDGET (window), &allocation);
@@ -1868,14 +1869,12 @@ main (int argc, char **argv)
     gtk_builder_connect_signals(builder, greeter);
 
     gtk_widget_show (GTK_WIDGET (login_window));
-    if (!wayfire)
-    {
-        center_window (login_window,  NULL, &main_window_pos);
-        g_signal_connect (GTK_WIDGET (login_window), "size-allocate", G_CALLBACK (center_window), &main_window_pos);
-    }
+    center_window (login_window,  NULL, &main_window_pos);
+    g_signal_connect (GTK_WIDGET (login_window), "size-allocate", G_CALLBACK (center_window), &main_window_pos);
 
     gtk_widget_show (GTK_WIDGET (login_window));
     gtk_window_set_decorated (login_window, FALSE);
+    gtk_widget_hide (GTK_WIDGET (info_bar));
     if (wayfire) gtk_window_set_default_size (login_window, 1, 1); // hack to force window to resize under wayfire
     gdk_window_focus (gtk_widget_get_window (GTK_WIDGET (login_window)), GDK_CURRENT_TIME);
 
