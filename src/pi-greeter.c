@@ -1813,7 +1813,8 @@ main (int argc, char **argv)
         gtk_window_set_type_hint(GTK_WINDOW(window), GDK_WINDOW_TYPE_HINT_DESKTOP);
         gtk_window_set_screen(GTK_WINDOW(window), screen);
         gtk_window_set_keep_below(GTK_WINDOW(window), TRUE);
-        gtk_widget_set_size_request(window, monitor_geometry.width, monitor_geometry.height);
+        if (wayfire) gtk_window_set_default_size (GTK_WINDOW (window), monitor_geometry.width, monitor_geometry.height);
+        else gtk_widget_set_size_request(window, monitor_geometry.width, monitor_geometry.height);
         gtk_window_set_resizable (GTK_WINDOW(window), FALSE);
         gtk_widget_set_app_paintable (GTK_WIDGET(window), TRUE);
         gtk_window_move (GTK_WINDOW(window), monitor_geometry.x, monitor_geometry.y);
@@ -1823,8 +1824,8 @@ main (int argc, char **argv)
         gtk_window_set_decorated (GTK_WINDOW (window), FALSE);
         if (wayfire)
         {
-            gtk_layer_init_for_window (window);
-            gtk_layer_set_layer (window, GTK_LAYER_SHELL_LAYER_BACKGROUND);
+            gtk_layer_init_for_window (GTK_WINDOW (window));
+            gtk_layer_set_layer (GTK_WINDOW (window), GTK_LAYER_SHELL_LAYER_BACKGROUND);
         }
         g_signal_connect (G_OBJECT (window), "draw", G_CALLBACK (background_window_draw), NULL);
         gtk_widget_queue_draw (GTK_WIDGET(window));
@@ -1869,8 +1870,8 @@ main (int argc, char **argv)
     gtk_widget_show (GTK_WIDGET (login_window));
     if (!wayfire)
     {
-    center_window (login_window,  NULL, &main_window_pos);
-    g_signal_connect (GTK_WIDGET (login_window), "size-allocate", G_CALLBACK (center_window), &main_window_pos);
+        center_window (login_window,  NULL, &main_window_pos);
+        g_signal_connect (GTK_WIDGET (login_window), "size-allocate", G_CALLBACK (center_window), &main_window_pos);
     }
 
     gtk_widget_show (GTK_WIDGET (login_window));
