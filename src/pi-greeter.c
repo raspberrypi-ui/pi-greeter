@@ -1874,8 +1874,14 @@ main (int argc, char **argv)
 
     gtk_widget_show (GTK_WIDGET (login_window));
     gtk_window_set_decorated (login_window, FALSE);
+    // force another redraw of the window to make it correctly size under wayfire
+    if (wayfire)
+    {
+        gtk_widget_hide (GTK_WIDGET (login_window));
+        gtk_widget_unrealize (GTK_WIDGET (login_window));
+        gtk_widget_show (GTK_WIDGET (login_window));
+    }
     gtk_widget_hide (GTK_WIDGET (info_bar));
-    if (wayfire) gtk_window_set_default_size (login_window, 1, 1); // hack to force window to resize under wayfire
     gdk_window_focus (gtk_widget_get_window (GTK_WIDGET (login_window)), GDK_CURRENT_TIME);
 
     /* focus fix (source: unity-greeter) */

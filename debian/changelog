@@ -1,3 +1,9 @@
+pi-greeter (0.18) bookworm; urgency=medium
+
+  * Tweak to display of greeter to force resize under Wayfire
+
+ -- Simon Long <simon@raspberrypi.com>  Mon, 13 Mar 2023 10:43:21 +0000
+
 pi-greeter (0.17) bullseye; urgency=medium
 
   * Modify for Wayfire
