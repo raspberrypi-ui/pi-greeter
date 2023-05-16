@@ -1,3 +1,9 @@
+pi-greeter (0.19) bookworm; urgency=medium
+
+  * Fix lack of shadows around greeter
+
+ -- Simon Long <simon@raspberrypi.com>  Tue, 16 May 2023 13:08:05 +0100
+
 pi-greeter (0.18) bookworm; urgency=medium
 
   * Tweak to display of greeter to force resize under Wayfire

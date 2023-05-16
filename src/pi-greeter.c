@@ -1832,10 +1832,6 @@ main (int argc, char **argv)
         }
 
         backgrounds = g_slist_prepend(backgrounds, window);
-        gtk_widget_show (window);
-        gtk_window_set_decorated (GTK_WINDOW (window), FALSE);
-        g_signal_connect (G_OBJECT (window), "draw", G_CALLBACK (background_window_draw), NULL);
-        gtk_widget_queue_draw (GTK_WIDGET(window));
     }
     backgrounds = g_slist_reverse(backgrounds);
 
@@ -1888,12 +1884,21 @@ main (int argc, char **argv)
     gtk_widget_show (GTK_WIDGET (login_window));
     gtk_window_set_decorated (login_window, FALSE);
     gtk_widget_hide (GTK_WIDGET (info_bar));
-    gdk_window_focus (gtk_widget_get_window (GTK_WIDGET (login_window)), GDK_CURRENT_TIME);
 
-    /* focus fix (source: unity-greeter) */
-    GdkWindow* root_window = gdk_get_default_root_window ();
-    gdk_window_set_events (root_window, gdk_window_get_events (root_window) | GDK_SUBSTRUCTURE_MASK);
-    gdk_window_add_filter (root_window, focus_upon_map, NULL);
+    gtk_widget_show (window);
+    gtk_window_set_decorated (GTK_WINDOW (window), FALSE);
+    g_signal_connect (G_OBJECT (window), "draw", G_CALLBACK (background_window_draw), NULL);
+    gtk_widget_queue_draw (GTK_WIDGET(window));
+
+    if (!wayfire)
+	{
+		gdk_window_focus (gtk_widget_get_window (GTK_WIDGET (login_window)), GDK_CURRENT_TIME);
+
+		/* focus fix (source: unity-greeter) */
+		GdkWindow* root_window = gdk_get_default_root_window ();
+		gdk_window_set_events (root_window, gdk_window_get_events (root_window) | GDK_SUBSTRUCTURE_MASK);
+		gdk_window_add_filter (root_window, focus_upon_map, NULL);
+	}
 
     gtk_main ();
 
