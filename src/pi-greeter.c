@@ -1636,7 +1636,8 @@ main (int argc, char **argv)
 
     /* Background windows */
     gint monitor;
-    GtkWidget *window, *windows[8];
+    GSList *iter;
+    GtkWidget *window;
 
     Display* display;
 
@@ -1809,8 +1810,7 @@ main (int argc, char **argv)
     {
         gdk_monitor_get_geometry (gdk_display_get_monitor (gdk_display_get_default (), monitor), &monitor_geometry);
 
-        windows[monitor] = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-        window = windows[monitor];
+        window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
         gtk_window_set_type_hint(GTK_WINDOW(window), GDK_WINDOW_TYPE_HINT_DESKTOP);
         gtk_window_set_keep_below(GTK_WINDOW(window), TRUE);
         if (wayfire) gtk_window_set_default_size (GTK_WINDOW (window), monitor_geometry.width, monitor_geometry.height);
@@ -1887,7 +1887,8 @@ main (int argc, char **argv)
     {
         for (monitor = 0; monitor < gdk_display_get_n_monitors (gdk_display_get_default ()); monitor++)
         {
-            window = windows[monitor];
+            iter = g_slist_nth (backgrounds, monitor);
+            window = GTK_WIDGET (iter->data);
             gtk_widget_show (window);
             gtk_window_set_decorated (GTK_WINDOW (window), FALSE);
             g_signal_connect (G_OBJECT (window), "draw", G_CALLBACK (background_window_draw), NULL);
