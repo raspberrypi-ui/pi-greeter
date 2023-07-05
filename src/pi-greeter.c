@@ -1636,8 +1636,7 @@ main (int argc, char **argv)
 
     /* Background windows */
     gint monitor;
-    GdkScreen *screen;
-    GtkWidget *window;
+    GtkWidget *window, *windows[8];
 
     Display* display;
 
@@ -1806,14 +1805,13 @@ main (int argc, char **argv)
     //gtk_cell_layout_add_attribute (GTK_CELL_LAYOUT (user_combo), renderer, "weight", 2);
 
     /* Set up the background images */	
-    screen = gdk_display_get_default_screen (gdk_display_get_default ());
     for (monitor = 0; monitor < gdk_display_get_n_monitors (gdk_display_get_default ()); monitor++)
     {
         gdk_monitor_get_geometry (gdk_display_get_monitor (gdk_display_get_default (), monitor), &monitor_geometry);
 
-        window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+        windows[monitor] = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+        window = windows[monitor];
         gtk_window_set_type_hint(GTK_WINDOW(window), GDK_WINDOW_TYPE_HINT_DESKTOP);
-        gtk_window_set_screen(GTK_WINDOW(window), screen);
         gtk_window_set_keep_below(GTK_WINDOW(window), TRUE);
         if (wayfire) gtk_window_set_default_size (GTK_WINDOW (window), monitor_geometry.width, monitor_geometry.height);
         else gtk_widget_set_size_request(window, monitor_geometry.width, monitor_geometry.height);
@@ -1885,12 +1883,18 @@ main (int argc, char **argv)
     gtk_window_set_decorated (login_window, FALSE);
     gtk_widget_hide (GTK_WIDGET (info_bar));
 
-    gtk_widget_show (window);
-    gtk_window_set_decorated (GTK_WINDOW (window), FALSE);
-    g_signal_connect (G_OBJECT (window), "draw", G_CALLBACK (background_window_draw), NULL);
-    gtk_widget_queue_draw (GTK_WIDGET(window));
-
-    if (!wayfire)
+    if (wayfire)
+    {
+        for (monitor = 0; monitor < gdk_display_get_n_monitors (gdk_display_get_default ()); monitor++)
+        {
+            window = windows[monitor];
+            gtk_widget_show (window);
+            gtk_window_set_decorated (GTK_WINDOW (window), FALSE);
+            g_signal_connect (G_OBJECT (window), "draw", G_CALLBACK (background_window_draw), NULL);
+            gtk_widget_queue_draw (GTK_WIDGET(window));
+        }
+    }
+    else
 	{
 		gdk_window_focus (gtk_widget_get_window (GTK_WIDGET (login_window)), GDK_CURRENT_TIME);
 
