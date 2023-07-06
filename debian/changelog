@@ -1,3 +1,9 @@
+pi-greeter (0.20) bookworm; urgency=medium
+
+  * Fix backgrounds for multiple monitors under X and Wayland
+
+ -- Simon Long <simon@raspberrypi.com>  Thu, 06 Jul 2023 11:28:08 +0100
+
 pi-greeter (0.19) bookworm; urgency=medium
 
   * Fix lack of shadows around greeter
