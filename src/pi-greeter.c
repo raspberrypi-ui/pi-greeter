@@ -884,7 +884,7 @@ static void set_displayed_user (LightDMGreeter *greeter, gchar *username)
     }
 
     set_login_button_label (greeter, username);
-    set_user_background (username);
+    //set_user_background (username);
     set_user_image (username);
     user = lightdm_user_list_get_user_by_name (lightdm_user_list_get_instance (), username);
     if (user)
@@ -1505,12 +1505,6 @@ set_background (GdkPixbuf *new_bg)
     GdkPixbuf *bg = NULL;
     GSList *iter;
 
-    if (wayfire)
-    {
-        gtk_widget_queue_draw (GTK_WIDGET (login_window));
-        return;
-    }
-
     if (new_bg)
         bg = new_bg;
     else
@@ -1775,6 +1769,7 @@ main (int argc, char **argv)
     login_button = GTK_BUTTON (gtk_builder_get_object (builder, "login_button"));
 
     g_signal_connect (G_OBJECT (login_window), "draw", G_CALLBACK (login_window_draw), NULL);
+    gtk_widget_queue_draw (GTK_WIDGET (login_window));
 
 #ifdef START_INDICATOR_SERVICES
     init_indicators (config, &indicator_pid, &spi_pid);
@@ -1835,13 +1830,11 @@ main (int argc, char **argv)
 
     if (lightdm_greeter_get_hide_users_hint (greeter))
     {
-        /* Set the background to default */
-        set_background (NULL);
+        //set_background (NULL);
         start_authentication ("*other");
     }
     else
     {
-        /* This also sets the background to user's */
         load_user_list ();
         gtk_widget_show (GTK_WIDGET (cancel_button));
         gtk_widget_show (GTK_WIDGET (user_combo));
@@ -1883,19 +1876,17 @@ main (int argc, char **argv)
     gtk_window_set_decorated (login_window, FALSE);
     gtk_widget_hide (GTK_WIDGET (info_bar));
 
-    if (wayfire)
+    for (monitor = 0; monitor < gdk_display_get_n_monitors (gdk_display_get_default ()); monitor++)
     {
-        for (monitor = 0; monitor < gdk_display_get_n_monitors (gdk_display_get_default ()); monitor++)
-        {
-            iter = g_slist_nth (backgrounds, monitor);
-            window = GTK_WIDGET (iter->data);
-            gtk_widget_show (window);
-            gtk_window_set_decorated (GTK_WINDOW (window), FALSE);
-            g_signal_connect (G_OBJECT (window), "draw", G_CALLBACK (background_window_draw), NULL);
-            gtk_widget_queue_draw (GTK_WIDGET(window));
-        }
+        iter = g_slist_nth (backgrounds, monitor);
+        window = GTK_WIDGET (iter->data);
+        gtk_widget_show (window);
+        gtk_window_set_decorated (GTK_WINDOW (window), FALSE);
+        g_signal_connect (G_OBJECT (window), "draw", G_CALLBACK (background_window_draw), NULL);
+        gtk_widget_queue_draw (GTK_WIDGET(window));
     }
-    else
+
+    if (!wayfire)
 	{
 		gdk_window_focus (gtk_widget_get_window (GTK_WIDGET (login_window)), GDK_CURRENT_TIME);
 
