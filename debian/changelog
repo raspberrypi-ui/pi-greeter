@@ -1,3 +1,9 @@
+pi-greeter (0.21) bookworm; urgency=medium
+
+  * More efficient wayfire test
+
+ -- Simon Long <simon@raspberrypi.com>  Mon, 10 Jul 2023 10:13:02 +0100
+
 pi-greeter (0.20) bookworm; urgency=medium
 
   * Fix backgrounds for multiple monitors under X and Wayland

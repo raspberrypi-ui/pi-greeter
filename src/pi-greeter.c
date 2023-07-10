@@ -1639,7 +1639,7 @@ main (int argc, char **argv)
     GPid indicator_pid = 0, spi_pid = 0;
     #endif
 
-    if (!system ("ps ax | grep wayfire | grep -qv grep")) wayfire = TRUE;
+    if (getenv ("WAYFIRE_CONFIG_FILE")) wayfire = TRUE;
 
     /* Prevent memory from being swapped out, as we are dealing with passwords */
     mlockall (MCL_CURRENT | MCL_FUTURE);
