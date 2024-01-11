@@ -75,7 +75,7 @@ static gboolean cancelling = FALSE, prompted = FALSE;
 static gboolean prompt_active = FALSE, password_prompted = FALSE;
 static gchar *wp_mode = NULL;
 
-static gboolean wayfire = FALSE;
+static gboolean wayland = FALSE;
 
 typedef struct
 {
@@ -490,7 +490,7 @@ center_window (GtkWindow *window, GtkAllocation *unused, const WindowPosition *p
 {   
     GtkAllocation allocation;
     GdkRectangle monitor_geometry;
-    if (wayfire) return;
+    if (wayland) return;
 
     gdk_monitor_get_geometry (gdk_display_get_primary_monitor (gdk_display_get_default ()), &monitor_geometry);
     gtk_widget_get_allocation (GTK_WIDGET (window), &allocation);
@@ -1002,7 +1002,7 @@ void
 login_cb (GtkWidget *widget)
 {
     /* Reset to default screensaver values */
-    if (!wayfire && lightdm_greeter_get_lock_hint (greeter))
+    if (!wayland && lightdm_greeter_get_lock_hint (greeter))
         XSetScreenSaver(gdk_x11_display_get_xdisplay(gdk_display_get_default ()), timeout, interval, prefer_blanking, allow_exposures);        
 
     gtk_widget_set_sensitive (GTK_WIDGET (username_entry), FALSE);
@@ -1639,7 +1639,7 @@ main (int argc, char **argv)
     GPid indicator_pid = 0, spi_pid = 0;
     #endif
 
-    if (getenv ("WAYLAND_DISPLAY")) wayfire = TRUE;
+    if (getenv ("WAYLAND_DISPLAY")) wayland = TRUE;
 
     /* Prevent memory from being swapped out, as we are dealing with passwords */
     mlockall (MCL_CURRENT | MCL_FUTURE);
@@ -1748,7 +1748,7 @@ main (int argc, char **argv)
     g_free (value);
 
     display = gdk_x11_display_get_xdisplay(gdk_display_get_default ());
-    if (!wayfire && lightdm_greeter_get_lock_hint (greeter)) {
+    if (!wayland && lightdm_greeter_get_lock_hint (greeter)) {
         XGetScreenSaver(display, &timeout, &interval, &prefer_blanking, &allow_exposures);
         XForceScreenSaver(display, ScreenSaverActive);
         XSetScreenSaver(display, screensaver_timeout, 0, ScreenSaverActive, DefaultExposures);
@@ -1808,11 +1808,11 @@ main (int argc, char **argv)
         window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
         gtk_window_set_type_hint(GTK_WINDOW(window), GDK_WINDOW_TYPE_HINT_DESKTOP);
         gtk_window_set_keep_below(GTK_WINDOW(window), TRUE);
-        if (wayfire) gtk_window_set_default_size (GTK_WINDOW (window), monitor_geometry.width, monitor_geometry.height);
+        if (wayland) gtk_window_set_default_size (GTK_WINDOW (window), monitor_geometry.width, monitor_geometry.height);
         else gtk_widget_set_size_request(window, monitor_geometry.width, monitor_geometry.height);
         gtk_window_set_resizable (GTK_WINDOW(window), FALSE);
         gtk_widget_set_app_paintable (GTK_WIDGET(window), TRUE);
-        if (!wayfire) gtk_window_move (GTK_WINDOW(window), monitor_geometry.x, monitor_geometry.y);
+        if (!wayland) gtk_window_move (GTK_WINDOW(window), monitor_geometry.x, monitor_geometry.y);
         else
         {
             gtk_layer_init_for_window (GTK_WINDOW (window));
@@ -1860,7 +1860,7 @@ main (int argc, char **argv)
     }
 
     gtk_builder_connect_signals(builder, greeter);
-    if (wayfire)
+    if (wayland)
     {
         gtk_layer_init_for_window (GTK_WINDOW (login_window));
         gtk_layer_set_layer (GTK_WINDOW (login_window), GTK_LAYER_SHELL_LAYER_TOP);
@@ -1886,7 +1886,7 @@ main (int argc, char **argv)
         gtk_widget_queue_draw (GTK_WIDGET(window));
     }
 
-    if (!wayfire)
+    if (!wayland)
 	{
 		gdk_window_focus (gtk_widget_get_window (GTK_WIDGET (login_window)), GDK_CURRENT_TIME);
 
@@ -1917,7 +1917,7 @@ main (int argc, char **argv)
     if (default_background_color)
         gdk_rgba_free (default_background_color);
 
-    if (!wayfire)
+    if (!wayland)
     {
 	int screen = XDefaultScreen (display);
 	Window w = RootWindow (display, screen);

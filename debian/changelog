@@ -1,3 +1,9 @@
+pi-greeter (0.22) bookworm; urgency=medium
+
+  * Add labwc compatibility
+
+ -- Simon Long <simon@raspberrypi.com>  Thu, 11 Jan 2024 15:22:33 +0000
+
 pi-greeter (0.21) bookworm; urgency=medium
 
   * More efficient wayfire test
