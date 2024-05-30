@@ -3,3 +3,8 @@ Link: /usr/share/xgreeters/lightdm-greeter.desktop
 Alternative: /usr/share/xgreeters/pi-greeter.desktop
 Priority: 70
 
+Name: pi-greeter.conf
+Link: /etc/lightdm/pi-greeter.conf
+Alternative: /usr/share/pi-greeter/pi-greeter.conf
+Priority: 50
+

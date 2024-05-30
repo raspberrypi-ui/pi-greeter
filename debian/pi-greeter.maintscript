@@ -1,0 +1,2 @@
+rm_conffile /etc/lightdm/pi-greeter.conf 0.22
+
