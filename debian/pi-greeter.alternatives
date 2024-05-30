@@ -1,0 +1,5 @@
+Name: lightdm-greeter
+Link: /usr/share/xgreeters/lightdm-greeter.desktop
+Alternative: /usr/share/xgreeters/pi-greeter.desktop
+Priority: 70
+
