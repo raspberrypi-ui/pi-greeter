@@ -1,3 +1,9 @@
+pi-greeter (0.23) bookworm; urgency=medium
+
+  * Add squeekboard support
+
+ -- Simon Long <simon@raspberrypi.com>  Mon, 08 Jul 2024 10:33:00 +0100
+
 pi-greeter (0.22) bookworm; urgency=medium
 
   * Add labwc compatibility
