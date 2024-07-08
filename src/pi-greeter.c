@@ -1896,6 +1896,16 @@ main (int argc, char **argv)
 		gdk_window_add_filter (root_window, focus_upon_map, NULL);
 	}
 
+    /* run kanshi */
+    if (wayland)
+    {
+        if (fork () == 0)
+        {
+            execl ("/usr/bin/kanshi", "/usr/bin/kanshi", NULL);
+            exit (0);
+        }
+    }
+
     /* start the virtual keyboard */
     value = g_key_file_get_value (config, "greeter", "onscreen-keyboard", NULL);
     if (value)
@@ -1907,6 +1917,7 @@ main (int argc, char **argv)
         }
         g_free (value);
     }
+    
     gtk_main ();
 
 #ifdef START_INDICATOR_SERVICES
