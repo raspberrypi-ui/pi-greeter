@@ -1897,7 +1897,7 @@ main (int argc, char **argv)
 	}
 
     /* run kanshi */
-    if (wayland)
+    if (wayland && !system ("pgrep labwc > /dev/null"))
     {
         if (fork () == 0)
         {
