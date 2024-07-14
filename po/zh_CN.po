@@ -1,4 +1,4 @@
-# Simplified Chinesetranslation for lightdm
+# Simplified Chinese translation for lightdm
 # Copyright (c) 2010 Rosetta Contributors and Canonical Ltd 2010
 # This file is distributed under the same license as the lightdm package.
 # ykla <yklaxds@gmail>, 2024.
