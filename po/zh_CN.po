@@ -1,46 +1,47 @@
-# Chinese (Simplified) translation for lightdm
+# Simplified Chinese translation for lightdm
 # Copyright (c) 2010 Rosetta Contributors and Canonical Ltd 2010
 # This file is distributed under the same license as the lightdm package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2010.
+# 朱涛 <bill_zt@sina.com>. 2013
+# ykla <yklaxds@gmail>, 2024.
 #
 msgid ""
 msgstr ""
 "Project-Id-Version: lightdm\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2014-03-15 17:37-0400\n"
-"PO-Revision-Date: 2013-05-08 06:39+0000\n"
-"Last-Translator: 朱涛 <bill_zt@sina.com>\n"
-"Language-Team: Chinese (Simplified) <zh_CN@li.org>\n"
+"PO-Revision-Date: 2024-07-14 17:54+0800\n"
+"Last-Translator: ykla <yklaxds@gmail.com>\n"
+"Language-Team: ykla <yklaxds@gmail.com>\n"
+"Language: zh\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "X-Launchpad-Export-Date: 2014-05-01 06:31+0000\n"
-"X-Generator: Launchpad (build 16985)\n"
-"Language: \n"
+"X-Generator: Poedit 3.4.4\n"
 
 #: ../src/lightdm-gtk-greeter.c:708
 msgid "Unlock"
-msgstr ""
+msgstr "解锁"
 
 #: ../src/lightdm-gtk-greeter.c:710 ../src/lightdm-gtk-greeter.glade.h:8
 msgid "Log In"
-msgstr ""
+msgstr "登录"
 
 #: ../src/lightdm-gtk-greeter.c:1079
 msgid "Failed to start session"
-msgstr "启动会话失败"
+msgstr "会话启动失败"
 
 #: ../src/lightdm-gtk-greeter.c:1254
 msgid "Other"
-msgstr ""
+msgstr "其他"
 
 #: ../src/lightdm-gtk-greeter.c:1266 ../src/lightdm-gtk-greeter.c:1852
 msgid "Guest Session"
-msgstr ""
+msgstr "来宾会话"
 
 #: ../src/lightdm-gtk-greeter.c:1479
 msgid "Incorrect password, please try again"
-msgstr "密码不正确，请重试"
+msgstr "密码错误，请重试"
 
 #: ../src/lightdm-gtk-greeter.c:1483
 msgid "Failed to authenticate"
@@ -49,12 +50,12 @@ msgstr "认证失败"
 #: ../src/lightdm-gtk-greeter.c:1526
 #, c-format
 msgid "Warning: There are still %d users logged in."
-msgstr ""
+msgstr "警告：仍有 %d 个用户出于登录状态。"
 
 #: ../src/lightdm-gtk-greeter.c:1528
 #, c-format
 msgid "Warning: There is still %d user logged in."
-msgstr ""
+msgstr "警告：仍有 %d 个用户处于登录状态。"
 
 #: ../src/lightdm-gtk-greeter.c:1540 ../src/lightdm-gtk-greeter.glade.h:9
 msgid "Cancel"
@@ -70,24 +71,23 @@ msgstr "您确定要关闭所有程序并重新启动计算机？"
 
 #: ../src/lightdm-gtk-greeter.c:1594
 msgid "Shut Down"
-msgstr ""
+msgstr "关机"
 
 #: ../src/lightdm-gtk-greeter.c:1594
-msgid ""
-"Are you sure you want to close all programs and shut down the computer?"
-msgstr ""
+msgid "Are you sure you want to close all programs and shut down the computer?"
+msgstr "你确定要关闭所有程序并关闭计算机吗？"
 
 #: ../src/lightdm-gtk-greeter.c:1860
 msgid "Other..."
-msgstr ""
+msgstr "其他……"
 
 #: ../src/lightdm-gtk-greeter.c:2513 ../src/lightdm-gtk-greeter.c:2520
 msgid "Enter your password"
-msgstr ""
+msgstr "输入你的密码"
 
 #: ../src/lightdm-gtk-greeter.c:2514 ../src/lightdm-gtk-greeter.c:2521
 msgid "Enter your username"
-msgstr ""
+msgstr "输入你的用户名"
 
 #: ../src/lightdm-gtk-greeter.glade.h:1
 msgid "Suspend"
@@ -103,7 +103,7 @@ msgstr "重启..."
 
 #: ../src/lightdm-gtk-greeter.glade.h:4
 msgid "Shut Down..."
-msgstr ""
+msgstr "关机……"
 
 #: ../src/lightdm-gtk-greeter.glade.h:5
 msgid "Large Font"
@@ -115,4 +115,4 @@ msgstr "高对比度"
 
 #: ../src/lightdm-gtk-greeter.glade.h:7
 msgid "On Screen Keyboard"
-msgstr ""
+msgstr "开启屏幕键盘"
