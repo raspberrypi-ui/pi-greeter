@@ -1866,6 +1866,7 @@ main (int argc, char **argv)
         gtk_layer_set_layer (GTK_WINDOW (login_window), GTK_LAYER_SHELL_LAYER_TOP);
         gtk_layer_set_monitor (GTK_WINDOW (login_window), gdk_display_get_monitor (gdk_display_get_default (), 0));
         gtk_layer_set_keyboard_interactivity (GTK_WINDOW (login_window), TRUE);
+        gtk_window_set_decorated (login_window, TRUE);
     }
 
     gtk_widget_show (GTK_WIDGET (login_window));
@@ -1873,7 +1874,6 @@ main (int argc, char **argv)
     g_signal_connect (GTK_WIDGET (login_window), "size-allocate", G_CALLBACK (center_window), &main_window_pos);
 
     gtk_widget_show (GTK_WIDGET (login_window));
-    gtk_window_set_decorated (login_window, FALSE);
     gtk_widget_hide (GTK_WIDGET (info_bar));
 
     for (monitor = 0; monitor < gdk_display_get_n_monitors (gdk_display_get_default ()); monitor++)

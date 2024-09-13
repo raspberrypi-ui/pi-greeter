@@ -393,5 +393,11 @@
         </child>
       </object>
     </child>
+    <child type="titlebar">
+      <object class="GtkHeaderBar">
+        <property name="visible">False</property>
+        <property name="can-focus">False</property>
+      </object>
+    </child>
   </object>
 </interface>

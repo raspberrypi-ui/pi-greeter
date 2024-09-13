@@ -1,3 +1,9 @@
+pi-greeter (0.24) bookworm; urgency=medium
+
+  * Add shadows for labwc
+
+ -- Simon Long <simon@raspberrypi.com>  Fri, 13 Sep 2024 16:03:57 +0100
+
 pi-greeter (0.23) bookworm; urgency=medium
 
   * Translation update
