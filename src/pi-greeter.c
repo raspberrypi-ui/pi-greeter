@@ -1768,8 +1768,8 @@ main (int argc, char **argv)
     cancel_button = GTK_BUTTON (gtk_builder_get_object (builder, "cancel_button"));
     login_button = GTK_BUTTON (gtk_builder_get_object (builder, "login_button"));
 
-    g_signal_connect (G_OBJECT (login_window), "draw", G_CALLBACK (login_window_draw), NULL);
-    gtk_widget_queue_draw (GTK_WIDGET (login_window));
+    //g_signal_connect (G_OBJECT (login_window), "draw", G_CALLBACK (login_window_draw), NULL);
+    //gtk_widget_queue_draw (GTK_WIDGET (login_window));
 
 #ifdef START_INDICATOR_SERVICES
     init_indicators (config, &indicator_pid, &spi_pid);
