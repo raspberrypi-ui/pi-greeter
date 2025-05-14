@@ -1,3 +1,9 @@
+pi-greeter (0.26) bookworm; urgency=medium
+
+  * Integrate Wayland session file
+
+ -- Simon Long <simon@raspberrypi.com>  Wed, 14 May 2025 14:57:28 +0100
+
 pi-greeter (0.25) bookworm; urgency=medium
 
   * Restore background image

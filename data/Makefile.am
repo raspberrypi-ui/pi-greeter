@@ -1,5 +1,6 @@
 xgreetersdir = $(datadir)/xgreeters
-dist_xgreeters_DATA = pi-greeter.desktop
+dist_xgreeters_DATA = 	pi-greeter-x.desktop \
+						pi-greeter-labwc.desktop
 
 configdir = $(sysconfdir)/lightdm
 dist_config_DATA = pi-greeter.conf
