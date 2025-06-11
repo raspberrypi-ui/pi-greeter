@@ -1,8 +1,8 @@
-pi-greeter (0.26) bookworm; urgency=medium
+pi-greeter (1.0) trixie; urgency=medium
 
-  * Integrate Wayland session file
+  * Trixie version
 
- -- Simon Long <simon@raspberrypi.com>  Wed, 14 May 2025 14:57:28 +0100
+ -- Simon Long <simon@raspberrypi.com>  Wed, 11 Jun 2025 15:02:58 +0100
 
 pi-greeter (0.25) bookworm; urgency=medium
 
