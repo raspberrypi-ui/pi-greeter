@@ -11,6 +11,6 @@ Homepage: http://raspberrypi.org/
 Package: pi-greeter
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, lightdm
-Recommends: policykit-1
+Recommends: polkitd, pkexec
 Description: GTK greeter for Raspberry Pi
  A simple GTK-based greeter for the Raspbian LXDE desktop.
