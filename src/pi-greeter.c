@@ -1366,6 +1366,7 @@ static void draw_windows (void)
     GdkRectangle monitor_geometry;
     GtkCellRenderer *renderer;
     GtkBuilder *builder;
+    GdkDisplay *display = gdk_display_get_default ();
 
     /* Background windows */
     gint monitor;
@@ -1392,9 +1393,9 @@ static void draw_windows (void)
     gtk_cell_layout_add_attribute (GTK_CELL_LAYOUT (user_combo), renderer, "text", 1);
 
     /* Set up the background images */
-    for (monitor = 0; monitor < gdk_display_get_n_monitors (gdk_display_get_default ()); monitor++)
+    for (monitor = 0; monitor < gdk_display_get_n_monitors (display); monitor++)
     {
-        gdk_monitor_get_geometry (gdk_display_get_monitor (gdk_display_get_default (), monitor), &monitor_geometry);
+        gdk_monitor_get_geometry (gdk_display_get_monitor (display, monitor), &monitor_geometry);
 
         window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
         gtk_window_set_type_hint (GTK_WINDOW (window), GDK_WINDOW_TYPE_HINT_DESKTOP);
@@ -1411,7 +1412,7 @@ static void draw_windows (void)
             gtk_window_set_default_size (GTK_WINDOW (window), monitor_geometry.width, monitor_geometry.height);
             gtk_layer_init_for_window (GTK_WINDOW (window));
             gtk_layer_set_layer (GTK_WINDOW (window), GTK_LAYER_SHELL_LAYER_BACKGROUND);
-            gtk_layer_set_monitor (GTK_WINDOW (window), gdk_display_get_monitor (gdk_display_get_default (), monitor));
+            gtk_layer_set_monitor (GTK_WINDOW (window), gdk_display_get_monitor (display, monitor));
             gtk_layer_set_anchor (GTK_WINDOW (window), GTK_LAYER_SHELL_EDGE_TOP, TRUE);
             gtk_layer_set_anchor (GTK_WINDOW (window), GTK_LAYER_SHELL_EDGE_BOTTOM, TRUE);
             gtk_layer_set_anchor (GTK_WINDOW (window), GTK_LAYER_SHELL_EDGE_LEFT, TRUE);
@@ -1439,19 +1440,19 @@ static void draw_windows (void)
     {
         gtk_layer_init_for_window (GTK_WINDOW (login_window));
         gtk_layer_set_layer (GTK_WINDOW (login_window), GTK_LAYER_SHELL_LAYER_TOP);
-        gtk_layer_set_monitor (GTK_WINDOW (login_window), gdk_display_get_monitor (gdk_display_get_default (), 0));
+        gtk_layer_set_monitor (GTK_WINDOW (login_window), gdk_display_get_monitor (display, 0));
         gtk_layer_set_keyboard_interactivity (GTK_WINDOW (login_window), TRUE);
         gtk_window_set_decorated (login_window, TRUE);
     }
 
     gtk_widget_show (GTK_WIDGET (login_window));
-    center_window (login_window,  NULL, &main_window_pos);
+    center_window (login_window, NULL, &main_window_pos);
     g_signal_connect (GTK_WIDGET (login_window), "size-allocate", G_CALLBACK (center_window), &main_window_pos);
 
     gtk_widget_show (GTK_WIDGET (login_window));
     gtk_widget_hide (GTK_WIDGET (info_bar));
 
-    for (monitor = 0; monitor < gdk_display_get_n_monitors (gdk_display_get_default ()); monitor++)
+    for (monitor = 0; monitor < gdk_display_get_n_monitors (display); monitor++)
     {
         iter = g_slist_nth (backgrounds, monitor);
         window = GTK_WIDGET (iter->data);
@@ -1470,6 +1471,8 @@ static void draw_windows (void)
 		gdk_window_set_events (root_window, gdk_window_get_events (root_window) | GDK_SUBSTRUCTURE_MASK);
 		gdk_window_add_filter (root_window, focus_upon_map, NULL);
 	}
+
+    g_object_unref (builder);
 }
 
 static void on_mon_add (GdkDisplay *, GdkMonitor *, gpointer)
