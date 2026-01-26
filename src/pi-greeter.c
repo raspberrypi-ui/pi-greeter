@@ -401,36 +401,6 @@ set_login_button_label (LightDMGreeter *greeter, const gchar *username)
     gtk_widget_set_sensitive (GTK_WIDGET (language_menuitem), !logged_in);
 }
 
-static void set_background (GdkPixbuf *new_bg);
-
-static void
-set_user_background (const gchar *username)
-{
-    LightDMUser *user;
-    const gchar *path;
-    GdkPixbuf *bg = NULL;
-    GError *error = NULL;
-
-    user = lightdm_user_list_get_user_by_name (lightdm_user_list_get_instance (), username);
-    if (user)
-    {
-        path = lightdm_user_get_background (user);
-        if (path)
-        {
-            bg = gdk_pixbuf_new_from_file (path, &error);
-            if (!bg)
-            {
-                g_warning ("Failed to load user background: %s", error->message);
-                g_clear_error (&error);
-            }
-        }
-    }
-
-    set_background (bg);
-    if (bg)
-        g_object_unref (bg);
-}
-
 static void
 set_user_image (const gchar *username)
 {
@@ -497,16 +467,6 @@ center_window (GtkWindow *window, GtkAllocation *unused, const WindowPosition *p
     gtk_window_move (window,
                      monitor_geometry.x + get_absolute_position (&pos->x, monitor_geometry.width, allocation.width),
                      monitor_geometry.y + get_absolute_position (&pos->y, monitor_geometry.height, allocation.height));
-}
-
-/* Use the much simpler fake transparency by drawing the window background with Cairo for Gtk3 */
-static gboolean
-login_window_draw (GtkWidget *widget, cairo_t *cr, gpointer user_data)
-{
-    gdk_cairo_set_source_rgba (cr, default_background_color);
-    cairo_paint (cr);
-
-    return FALSE;
 }
 
 static void draw_background (cairo_t *c, GdkPixbuf *bg, gint m_width, gint m_height)
@@ -1322,222 +1282,6 @@ load_user_list (void)
     g_free (last_user);
 }
 
-static int screen_width (GdkScreen *scr)
-{
-    GdkDisplay *disp = gdk_screen_get_display (scr == NULL ? gdk_screen_get_default () : scr);
-    GdkMonitor *mon;
-    GdkRectangle rect;
-    int min = -1, max = 0, i;
-
-    for (i = 0; i < gdk_display_get_n_monitors (disp); i++)
-    {
-        mon = gdk_display_get_monitor (disp, i);
-        gdk_monitor_get_geometry (mon, &rect);
-        if (min == -1 || rect.x < min) min = rect.x;
-        if (rect.x + rect.width > max) max = rect.x + rect.width;
-    }
-
-    return max - min;
-}
-
-static int screen_height (GdkScreen *scr)
-{
-    GdkDisplay *disp = gdk_screen_get_display (scr == NULL ? gdk_screen_get_default () : scr);
-    GdkMonitor *mon;
-    GdkRectangle rect;
-    int min = -1, max = 0, i;
-
-    for (i = 0; i < gdk_display_get_n_monitors (disp); i++)
-    {
-        mon = gdk_display_get_monitor (disp, i);
-        gdk_monitor_get_geometry (mon, &rect);
-        if (min == -1 || rect.y < min) min = rect.y;
-        if (rect.y + rect.height > max) max = rect.y + rect.height;
-    }
-
-    return max - min;
-}
-
-/* The following code for setting a RetainPermanent background pixmap was taken
-   originally from Gnome, with some fixes from MATE. see:
-   https://github.com/mate-desktop/mate-desktop/blob/master/libmate-desktop/mate-bg.c */
-static cairo_surface_t *
-create_root_surface (GdkScreen *screen)
-{
-    gint number, width, height;
-    Display *display;
-    Pixmap pixmap;
-    cairo_surface_t *surface;
-
-    number = 0;
-    width = screen_width (screen);
-    height = screen_height (screen);
-
-    /* Open a new connection so with Retain Permanent so the pixmap remains when the greeter quits */
-    gdk_display_flush (gdk_display_get_default ());
-    display = XOpenDisplay (gdk_display_get_name (gdk_screen_get_display (screen)));
-    if (!display)
-    {
-        g_warning ("Failed to create root pixmap");
-        return NULL;
-    }
-
-    XSetCloseDownMode (display, RetainPermanent);
-    pixmap = XCreatePixmap (display, RootWindow (display, number), width, height, DefaultDepth (display, number));
-    XCloseDisplay (display);
-
-    /* Convert into a Cairo surface */
-    surface = cairo_xlib_surface_create (GDK_SCREEN_XDISPLAY (screen),
-                                         pixmap,
-                                         GDK_VISUAL_XVISUAL (gdk_screen_get_system_visual (screen)),
-                                         width, height);
-
-    return surface;
-}
-
-/* Sets the "ESETROOT_PMAP_ID" property to later be used to free the pixmap,
-*/
-static void
-set_root_pixmap_id (GdkScreen *screen,
-                         Display *display,
-                         Pixmap xpixmap)
-{
-    Window xroot = RootWindow (display, 0);
-    char *atom_names[] = {"_XROOTPMAP_ID", "ESETROOT_PMAP_ID"};
-    Atom atoms[G_N_ELEMENTS(atom_names)] = {0};
-
-    Atom type;
-    int format;
-    unsigned long nitems, after;
-    unsigned char *data_root, *data_esetroot;
-
-    /* Get atoms for both properties in an array, only if they exist.
-     * This method is to avoid multiple round-trips to Xserver
-     */
-    if (XInternAtoms (display, atom_names, G_N_ELEMENTS(atom_names), True, atoms) &&
-        atoms[0] != None && atoms[1] != None)
-    {
-
-        XGetWindowProperty (display, xroot, atoms[0], 0L, 1L, False, AnyPropertyType,
-                            &type, &format, &nitems, &after, &data_root);
-        if (data_root && type == XA_PIXMAP && format == 32 && nitems == 1)
-        {
-            XGetWindowProperty (display, xroot, atoms[1], 0L, 1L, False, AnyPropertyType,
-                                &type, &format, &nitems, &after, &data_esetroot);
-            if (data_esetroot && type == XA_PIXMAP && format == 32 && nitems == 1)
-            {
-                Pixmap xrootpmap = *((Pixmap *) data_root);
-                Pixmap esetrootpmap = *((Pixmap *) data_esetroot);
-                XFree (data_root);
-                XFree (data_esetroot);
-
-                gdk_x11_display_error_trap_push (gdk_x11_lookup_xdisplay (display));
-                if (xrootpmap && xrootpmap == esetrootpmap) {
-                    XKillClient (display, xrootpmap);
-                }
-                if (esetrootpmap && esetrootpmap != xrootpmap) {
-                    XKillClient (display, esetrootpmap);
-                }
-
-                XSync (display, False);
-                gdk_x11_display_error_trap_pop (gdk_x11_lookup_xdisplay (display));
-
-            }
-        }
-    }
-
-    /* Get atoms for both properties in an array, create them if needed.
-     * This method is to avoid multiple round-trips to Xserver
-     */
-    if (!XInternAtoms (display, atom_names, G_N_ELEMENTS(atom_names), False, atoms) ||
-        atoms[0] == None || atoms[1] == None) {
-        g_warning("Could not create atoms needed to set root pixmap id/properties.\n");
-        return;
-    }
-
-    /* Set new _XROOTMAP_ID and ESETROOT_PMAP_ID properties */
-    XChangeProperty (display, xroot, atoms[0], XA_PIXMAP, 32,
-                     PropModeReplace, (unsigned char *) &xpixmap, 1);
-
-    XChangeProperty (display, xroot, atoms[1], XA_PIXMAP, 32,
-                     PropModeReplace, (unsigned char *) &xpixmap, 1);
-}
-
-/**
-* set_surface_as_root:
-* @screen: the #GdkScreen to change root background on
-* @surface: the #cairo_surface_t to set root background from.
-* Must be an xlib surface backing a pixmap.
-*
-* Set the root pixmap, and properties pointing to it. We
-* do this atomically with a server grab to make sure that
-* we won't leak the pixmap if somebody else it setting
-* it at the same time. (This assumes that they follow the
-* same conventions we do). @surface should come from a call
-* to create_root_surface().
-**/
-static void
-set_surface_as_root (GdkScreen *screen, cairo_surface_t *surface)
-{
-    g_return_if_fail (cairo_surface_get_type (surface) == CAIRO_SURFACE_TYPE_XLIB);
-
-    /* Desktop background pixmap should be created from dummy X client since most
-     * applications will try to kill it with XKillClient later when changing pixmap
-     */
-    Display *display = GDK_DISPLAY_XDISPLAY (gdk_screen_get_display (screen));
-    Pixmap pixmap_id = cairo_xlib_surface_get_drawable (surface);
-    Window xroot = RootWindow (display, 0);
-
-    XGrabServer (display);
-
-    XSetWindowBackgroundPixmap (display, xroot, pixmap_id);
-    set_root_pixmap_id (screen, display, pixmap_id);
-    XClearWindow (display, xroot);
-
-    XFlush (display);
-    XUngrabServer (display);
-}
-
-static void
-set_background (GdkPixbuf *new_bg)
-{
-    GdkRectangle monitor_geometry;
-    GdkPixbuf *bg = NULL;
-    GSList *iter;
-
-    if (new_bg)
-        bg = new_bg;
-    else
-        bg = default_background_pixbuf;
-
-    /* Set the background */
-    GdkScreen *screen;
-    cairo_surface_t *surface;
-    cairo_t *c;
-    gint monitor;
-
-    screen = gdk_display_get_default_screen (gdk_display_get_default ());
-    surface = create_root_surface (screen);
-    c = cairo_create (surface);
-
-    for (monitor = 0; monitor < gdk_display_get_n_monitors (gdk_display_get_default ()); monitor++)
-    {
-        gdk_monitor_get_geometry (gdk_display_get_monitor (gdk_display_get_default (), monitor), &monitor_geometry);
-        draw_background (c, bg, monitor_geometry.width, monitor_geometry.height);
-        iter = g_slist_nth (backgrounds, monitor);
-        gtk_widget_queue_draw (GTK_WIDGET (iter->data));
-    }
-
-    cairo_destroy (c);
-
-    /* Refresh background */
-    gdk_display_flush (gdk_display_get_default ());
-    set_surface_as_root (screen, surface);
-    cairo_surface_destroy (surface);
-
-    gtk_widget_queue_draw (GTK_WIDGET (login_window));
-}
-
 static gboolean
 read_position_from_str (const gchar *s, DimensionPosition *x)
 {
@@ -1637,13 +1381,13 @@ static void draw_windows (void)
     user_combo = GTK_COMBO_BOX (gtk_builder_get_object (builder, "user_combobox"));
     username_entry = GTK_ENTRY (gtk_builder_get_object (builder, "username_entry"));
     password_entry = GTK_ENTRY (gtk_builder_get_object (builder, "password_entry"));
-    info_bar = GTK_INFO_BAR (GTK_WIDGET(gtk_builder_get_object(builder, "greeter_infobar")));
+    info_bar = GTK_INFO_BAR (gtk_builder_get_object (builder, "greeter_infobar"));
     message_label = GTK_LABEL (gtk_builder_get_object (builder, "message_label"));
     cancel_button = GTK_BUTTON (gtk_builder_get_object (builder, "cancel_button"));
     login_button = GTK_BUTTON (gtk_builder_get_object (builder, "login_button"));
 
     /* Users combobox */
-    renderer = gtk_cell_renderer_text_new();
+    renderer = gtk_cell_renderer_text_new ();
     gtk_cell_layout_pack_start (GTK_CELL_LAYOUT (user_combo), renderer, TRUE);
     gtk_cell_layout_add_attribute (GTK_CELL_LAYOUT (user_combo), renderer, "text", 1);
 
@@ -1652,16 +1396,19 @@ static void draw_windows (void)
     {
         gdk_monitor_get_geometry (gdk_display_get_monitor (gdk_display_get_default (), monitor), &monitor_geometry);
 
-        window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-        gtk_window_set_type_hint(GTK_WINDOW(window), GDK_WINDOW_TYPE_HINT_DESKTOP);
-        gtk_window_set_keep_below(GTK_WINDOW(window), TRUE);
-        if (wayland) gtk_window_set_default_size (GTK_WINDOW (window), monitor_geometry.width, monitor_geometry.height);
-        else gtk_widget_set_size_request(window, monitor_geometry.width, monitor_geometry.height);
-        gtk_window_set_resizable (GTK_WINDOW(window), FALSE);
-        gtk_widget_set_app_paintable (GTK_WIDGET(window), TRUE);
-        if (!wayland) gtk_window_move (GTK_WINDOW(window), monitor_geometry.x, monitor_geometry.y);
+        window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
+        gtk_window_set_type_hint (GTK_WINDOW (window), GDK_WINDOW_TYPE_HINT_DESKTOP);
+        gtk_window_set_keep_below (GTK_WINDOW (window), TRUE);
+        gtk_window_set_resizable (GTK_WINDOW (window), FALSE);
+        gtk_widget_set_app_paintable (GTK_WIDGET (window), TRUE);
+        if (!wayland)
+        {
+            gtk_widget_set_size_request (window, monitor_geometry.width, monitor_geometry.height);
+            gtk_window_move (GTK_WINDOW (window), monitor_geometry.x, monitor_geometry.y);
+        }
         else
         {
+            gtk_window_set_default_size (GTK_WINDOW (window), monitor_geometry.width, monitor_geometry.height);
             gtk_layer_init_for_window (GTK_WINDOW (window));
             gtk_layer_set_layer (GTK_WINDOW (window), GTK_LAYER_SHELL_LAYER_BACKGROUND);
             gtk_layer_set_monitor (GTK_WINDOW (window), gdk_display_get_monitor (gdk_display_get_default (), monitor));
@@ -1686,7 +1433,8 @@ static void draw_windows (void)
         gtk_widget_show (GTK_WIDGET (user_combo));
     }
 
-    gtk_builder_connect_signals(builder, greeter);
+    gtk_builder_connect_signals (builder, greeter);
+
     if (wayland)
     {
         gtk_layer_init_for_window (GTK_WINDOW (login_window));
@@ -1723,7 +1471,6 @@ static void draw_windows (void)
 		gdk_window_add_filter (root_window, focus_upon_map, NULL);
 	}
 }
-
 
 static void on_mon_add (GdkDisplay *, GdkMonitor *, gpointer)
 {
@@ -1901,9 +1648,8 @@ main (int argc, char **argv)
         g_free (value);
     }
 
-
-
     draw_windows ();
+
     g_signal_connect (gdk_display_get_default (), "monitor-added", G_CALLBACK (on_mon_add), NULL);
 
     gtk_main ();
