@@ -163,11 +163,7 @@ reassign_menu_item_accel (GtkWidget *item)
 }
 
 static void
-#ifdef START_INDICATOR_SERVICES
-init_indicators (GKeyFile* config, GPid* indicator_pid, GPid* spi_pid)
-#else
 init_indicators (GKeyFile* config)
-#endif
 {
     gchar **names = NULL;
     gsize length = 0;
@@ -176,12 +172,6 @@ init_indicators (GKeyFile* config)
     GHashTableIter iter;
     gpointer iter_value;
     gboolean fallback = FALSE;
-
-#ifdef START_INDICATOR_SERVICES
-    GError *error = NULL;
-    gchar *AT_SPI_CMD[] = {"/usr/lib/at-spi2-core/at-spi-bus-launcher", "--launch-immediately", NULL};
-    gchar *INDICATORS_CMD[] = {"init", "--user", "--startup-event", "indicator-services-start", NULL};
-#endif
 
     if (g_key_file_has_key (config, "greeter", "indicators", NULL))
     {   /* no option = default list, empty value = empty list */
@@ -1366,7 +1356,7 @@ static void read_config (void)
     GError *error = NULL;
     GdkPixbuf *background_pixbuf;
     GdkRGBA background_color;
-    gchar *value;
+    gchar *value, *x, *y;
 
     config = g_key_file_new ();
     g_key_file_load_from_file (config, CONFIG_FILE, G_KEY_FILE_NONE, &error);
@@ -1461,24 +1451,19 @@ static void read_config (void)
     if (value)
     {
         g_debug ("Window position %s", value);
-        gchar *x = value;
-        gchar *y = strchr (value, ' ');
-        if (y)
-            (y++)[0] = '\0';
+        x = value;
+        y = strchr (value, ' ');
+        if (y) *y++ = 0;
 
+        /* If there is no y-part then y = x */
         if (read_position_from_str (x, &main_window_pos.x))
-            /* If there is no y-part then y = x */
             if (!y || !read_position_from_str (y, &main_window_pos.y))
                 main_window_pos.y = main_window_pos.x;
 
         g_free (value);
     }
 
-#ifdef START_INDICATOR_SERVICES
-    init_indicators (config, &indicator_pid, &spi_pid);
-#else
     init_indicators (config);
-#endif
 
     g_key_file_free (config);
 }
@@ -1597,10 +1582,6 @@ main (int argc, char **argv)
     gchar *state_dir;
     GError *error = NULL;
 
-#ifdef START_INDICATOR_SERVICES
-    GPid indicator_pid = 0, spi_pid = 0;
-#endif
-
     if (getenv ("WAYLAND_DISPLAY")) wayland = TRUE;
 
     /* Prevent memory from being swapped out, as we are dealing with passwords */
@@ -1657,20 +1638,6 @@ main (int argc, char **argv)
     g_signal_connect (gdk_display_get_default (), "monitor-added", G_CALLBACK (on_mon_add), NULL);
 
     gtk_main ();
-
-#ifdef START_INDICATOR_SERVICES
-    if (indicator_pid)
-    {
-		kill (indicator_pid, SIGTERM);
-		waitpid (indicator_pid, NULL, 0);
-    }
-
-    if (spi_pid)
-    {
-		kill (spi_pid, SIGTERM);
-		waitpid (spi_pid, NULL, 0);
-    }
-#endif
 
     if (default_background_pixbuf) g_object_unref (default_background_pixbuf);
     if (default_background_color) gdk_rgba_free (default_background_color);
