@@ -1617,21 +1617,126 @@ focus_upon_map (GdkXEvent *gxevent, GdkEvent *event, gpointer  data)
     return GDK_FILTER_CONTINUE;
 }
 
-int
-main (int argc, char **argv)
+static void draw_windows (void)
 {
-    GKeyFile *config;
     GdkRectangle monitor_geometry;
-    GtkBuilder *builder;
     GtkCellRenderer *renderer;
-    gchar *value, *state_dir;
-    GdkRGBA background_color;
-    GError *error = NULL;
+    GtkBuilder *builder;
 
     /* Background windows */
     gint monitor;
     GSList *iter;
     GtkWidget *window;
+
+    builder = gtk_builder_new ();
+	gtk_builder_add_from_file (builder, GREETER_DATA_DIR "/pi-greeter.glade", NULL);
+
+    /* Login window */
+    login_window = GTK_WINDOW (gtk_builder_get_object (builder, "login_window"));
+    user_image = GTK_IMAGE (gtk_builder_get_object (builder, "user_image"));
+    user_combo = GTK_COMBO_BOX (gtk_builder_get_object (builder, "user_combobox"));
+    username_entry = GTK_ENTRY (gtk_builder_get_object (builder, "username_entry"));
+    password_entry = GTK_ENTRY (gtk_builder_get_object (builder, "password_entry"));
+    info_bar = GTK_INFO_BAR (GTK_WIDGET(gtk_builder_get_object(builder, "greeter_infobar")));
+    message_label = GTK_LABEL (gtk_builder_get_object (builder, "message_label"));
+    cancel_button = GTK_BUTTON (gtk_builder_get_object (builder, "cancel_button"));
+    login_button = GTK_BUTTON (gtk_builder_get_object (builder, "login_button"));
+
+    /* Users combobox */
+    renderer = gtk_cell_renderer_text_new();
+    gtk_cell_layout_pack_start (GTK_CELL_LAYOUT (user_combo), renderer, TRUE);
+    gtk_cell_layout_add_attribute (GTK_CELL_LAYOUT (user_combo), renderer, "text", 1);
+
+    /* Set up the background images */
+    for (monitor = 0; monitor < gdk_display_get_n_monitors (gdk_display_get_default ()); monitor++)
+    {
+        gdk_monitor_get_geometry (gdk_display_get_monitor (gdk_display_get_default (), monitor), &monitor_geometry);
+
+        window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+        gtk_window_set_type_hint(GTK_WINDOW(window), GDK_WINDOW_TYPE_HINT_DESKTOP);
+        gtk_window_set_keep_below(GTK_WINDOW(window), TRUE);
+        if (wayland) gtk_window_set_default_size (GTK_WINDOW (window), monitor_geometry.width, monitor_geometry.height);
+        else gtk_widget_set_size_request(window, monitor_geometry.width, monitor_geometry.height);
+        gtk_window_set_resizable (GTK_WINDOW(window), FALSE);
+        gtk_widget_set_app_paintable (GTK_WIDGET(window), TRUE);
+        if (!wayland) gtk_window_move (GTK_WINDOW(window), monitor_geometry.x, monitor_geometry.y);
+        else
+        {
+            gtk_layer_init_for_window (GTK_WINDOW (window));
+            gtk_layer_set_layer (GTK_WINDOW (window), GTK_LAYER_SHELL_LAYER_BACKGROUND);
+            gtk_layer_set_monitor (GTK_WINDOW (window), gdk_display_get_monitor (gdk_display_get_default (), monitor));
+            gtk_layer_set_anchor (GTK_WINDOW (window), GTK_LAYER_SHELL_EDGE_TOP, TRUE);
+            gtk_layer_set_anchor (GTK_WINDOW (window), GTK_LAYER_SHELL_EDGE_BOTTOM, TRUE);
+            gtk_layer_set_anchor (GTK_WINDOW (window), GTK_LAYER_SHELL_EDGE_LEFT, TRUE);
+            gtk_layer_set_anchor (GTK_WINDOW (window), GTK_LAYER_SHELL_EDGE_RIGHT, TRUE);
+        }
+
+        backgrounds = g_slist_prepend(backgrounds, window);
+    }
+    backgrounds = g_slist_reverse(backgrounds);
+
+    if (lightdm_greeter_get_hide_users_hint (greeter))
+    {
+        start_authentication ("*other");
+    }
+    else
+    {
+        load_user_list ();
+        gtk_widget_show (GTK_WIDGET (cancel_button));
+        gtk_widget_show (GTK_WIDGET (user_combo));
+    }
+
+    gtk_builder_connect_signals(builder, greeter);
+    if (wayland)
+    {
+        gtk_layer_init_for_window (GTK_WINDOW (login_window));
+        gtk_layer_set_layer (GTK_WINDOW (login_window), GTK_LAYER_SHELL_LAYER_TOP);
+        gtk_layer_set_monitor (GTK_WINDOW (login_window), gdk_display_get_monitor (gdk_display_get_default (), 0));
+        gtk_layer_set_keyboard_interactivity (GTK_WINDOW (login_window), TRUE);
+        gtk_window_set_decorated (login_window, TRUE);
+    }
+
+    gtk_widget_show (GTK_WIDGET (login_window));
+    center_window (login_window,  NULL, &main_window_pos);
+    g_signal_connect (GTK_WIDGET (login_window), "size-allocate", G_CALLBACK (center_window), &main_window_pos);
+
+    gtk_widget_show (GTK_WIDGET (login_window));
+    gtk_widget_hide (GTK_WIDGET (info_bar));
+
+    for (monitor = 0; monitor < gdk_display_get_n_monitors (gdk_display_get_default ()); monitor++)
+    {
+        iter = g_slist_nth (backgrounds, monitor);
+        window = GTK_WIDGET (iter->data);
+        gtk_widget_show (window);
+        gtk_window_set_decorated (GTK_WINDOW (window), FALSE);
+        g_signal_connect (G_OBJECT (window), "draw", G_CALLBACK (background_window_draw), NULL);
+        gtk_widget_queue_draw (GTK_WIDGET(window));
+    }
+
+    if (!wayland)
+	{
+		gdk_window_focus (gtk_widget_get_window (GTK_WIDGET (login_window)), GDK_CURRENT_TIME);
+
+		/* focus fix (source: unity-greeter) */
+		GdkWindow* root_window = gdk_get_default_root_window ();
+		gdk_window_set_events (root_window, gdk_window_get_events (root_window) | GDK_SUBSTRUCTURE_MASK);
+		gdk_window_add_filter (root_window, focus_upon_map, NULL);
+	}
+}
+
+
+static void on_mon_add (GdkDisplay *, GdkMonitor *, gpointer)
+{
+    draw_windows ();
+}
+
+int
+main (int argc, char **argv)
+{
+    GKeyFile *config;
+    gchar *value, *state_dir;
+    GdkRGBA background_color;
+    GError *error = NULL;
 
     Display* display;
 
@@ -1754,23 +1859,6 @@ main (int argc, char **argv)
         XSetScreenSaver(display, screensaver_timeout, 0, ScreenSaverActive, DefaultExposures);
     }
 
-    builder = gtk_builder_new ();
-	gtk_builder_add_from_file (builder, GREETER_DATA_DIR "/pi-greeter.glade", NULL);
-    
-    /* Login window */
-    login_window = GTK_WINDOW (gtk_builder_get_object (builder, "login_window"));
-    user_image = GTK_IMAGE (gtk_builder_get_object (builder, "user_image"));
-    user_combo = GTK_COMBO_BOX (gtk_builder_get_object (builder, "user_combobox"));
-    username_entry = GTK_ENTRY (gtk_builder_get_object (builder, "username_entry"));
-    password_entry = GTK_ENTRY (gtk_builder_get_object (builder, "password_entry"));
-    info_bar = GTK_INFO_BAR (GTK_WIDGET(gtk_builder_get_object(builder, "greeter_infobar")));
-    message_label = GTK_LABEL (gtk_builder_get_object (builder, "message_label"));
-    cancel_button = GTK_BUTTON (gtk_builder_get_object (builder, "cancel_button"));
-    login_button = GTK_BUTTON (gtk_builder_get_object (builder, "login_button"));
-
-    //g_signal_connect (G_OBJECT (login_window), "draw", G_CALLBACK (login_window_draw), NULL);
-    //gtk_widget_queue_draw (GTK_WIDGET (login_window));
-
 #ifdef START_INDICATOR_SERVICES
     init_indicators (config, &indicator_pid, &spi_pid);
 #else
@@ -1794,52 +1882,6 @@ main (int argc, char **argv)
         g_free (value);
     }
 
-    /* Users combobox */
-    renderer = gtk_cell_renderer_text_new();
-    gtk_cell_layout_pack_start (GTK_CELL_LAYOUT (user_combo), renderer, TRUE);
-    gtk_cell_layout_add_attribute (GTK_CELL_LAYOUT (user_combo), renderer, "text", 1);
-    //gtk_cell_layout_add_attribute (GTK_CELL_LAYOUT (user_combo), renderer, "weight", 2);
-
-    /* Set up the background images */	
-    for (monitor = 0; monitor < gdk_display_get_n_monitors (gdk_display_get_default ()); monitor++)
-    {
-        gdk_monitor_get_geometry (gdk_display_get_monitor (gdk_display_get_default (), monitor), &monitor_geometry);
-
-        window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-        gtk_window_set_type_hint(GTK_WINDOW(window), GDK_WINDOW_TYPE_HINT_DESKTOP);
-        gtk_window_set_keep_below(GTK_WINDOW(window), TRUE);
-        if (wayland) gtk_window_set_default_size (GTK_WINDOW (window), monitor_geometry.width, monitor_geometry.height);
-        else gtk_widget_set_size_request(window, monitor_geometry.width, monitor_geometry.height);
-        gtk_window_set_resizable (GTK_WINDOW(window), FALSE);
-        gtk_widget_set_app_paintable (GTK_WIDGET(window), TRUE);
-        if (!wayland) gtk_window_move (GTK_WINDOW(window), monitor_geometry.x, monitor_geometry.y);
-        else
-        {
-            gtk_layer_init_for_window (GTK_WINDOW (window));
-            gtk_layer_set_layer (GTK_WINDOW (window), GTK_LAYER_SHELL_LAYER_BACKGROUND);
-            gtk_layer_set_monitor (GTK_WINDOW (window), gdk_display_get_monitor (gdk_display_get_default (), monitor));
-            gtk_layer_set_anchor (GTK_WINDOW (window), GTK_LAYER_SHELL_EDGE_TOP, TRUE);
-            gtk_layer_set_anchor (GTK_WINDOW (window), GTK_LAYER_SHELL_EDGE_BOTTOM, TRUE);
-            gtk_layer_set_anchor (GTK_WINDOW (window), GTK_LAYER_SHELL_EDGE_LEFT, TRUE);
-            gtk_layer_set_anchor (GTK_WINDOW (window), GTK_LAYER_SHELL_EDGE_RIGHT, TRUE);
-        }
-
-        backgrounds = g_slist_prepend(backgrounds, window);
-    }
-    backgrounds = g_slist_reverse(backgrounds);
-
-    if (lightdm_greeter_get_hide_users_hint (greeter))
-    {
-        //set_background (NULL);
-        start_authentication ("*other");
-    }
-    else
-    {
-        load_user_list ();
-        gtk_widget_show (GTK_WIDGET (cancel_button));
-        gtk_widget_show (GTK_WIDGET (user_combo));
-    }
-
     /* Window position */
     /* Default: x-center, y-center */
     main_window_pos = CENTERED_WINDOW_POS;
@@ -1859,42 +1901,10 @@ main (int argc, char **argv)
         g_free (value);
     }
 
-    gtk_builder_connect_signals(builder, greeter);
-    if (wayland)
-    {
-        gtk_layer_init_for_window (GTK_WINDOW (login_window));
-        gtk_layer_set_layer (GTK_WINDOW (login_window), GTK_LAYER_SHELL_LAYER_TOP);
-        gtk_layer_set_monitor (GTK_WINDOW (login_window), gdk_display_get_monitor (gdk_display_get_default (), 0));
-        gtk_layer_set_keyboard_interactivity (GTK_WINDOW (login_window), TRUE);
-        gtk_window_set_decorated (login_window, TRUE);
-    }
 
-    gtk_widget_show (GTK_WIDGET (login_window));
-    center_window (login_window,  NULL, &main_window_pos);
-    g_signal_connect (GTK_WIDGET (login_window), "size-allocate", G_CALLBACK (center_window), &main_window_pos);
 
-    gtk_widget_show (GTK_WIDGET (login_window));
-    gtk_widget_hide (GTK_WIDGET (info_bar));
-
-    for (monitor = 0; monitor < gdk_display_get_n_monitors (gdk_display_get_default ()); monitor++)
-    {
-        iter = g_slist_nth (backgrounds, monitor);
-        window = GTK_WIDGET (iter->data);
-        gtk_widget_show (window);
-        gtk_window_set_decorated (GTK_WINDOW (window), FALSE);
-        g_signal_connect (G_OBJECT (window), "draw", G_CALLBACK (background_window_draw), NULL);
-        gtk_widget_queue_draw (GTK_WIDGET(window));
-    }
-
-    if (!wayland)
-	{
-		gdk_window_focus (gtk_widget_get_window (GTK_WIDGET (login_window)), GDK_CURRENT_TIME);
-
-		/* focus fix (source: unity-greeter) */
-		GdkWindow* root_window = gdk_get_default_root_window ();
-		gdk_window_set_events (root_window, gdk_window_get_events (root_window) | GDK_SUBSTRUCTURE_MASK);
-		gdk_window_add_filter (root_window, focus_upon_map, NULL);
-	}
+    draw_windows ();
+    g_signal_connect (gdk_display_get_default (), "monitor-added", G_CALLBACK (on_mon_add), NULL);
 
     gtk_main ();
 
