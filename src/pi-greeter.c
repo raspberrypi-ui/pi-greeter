@@ -58,6 +58,9 @@ static GtkButton *cancel_button, *login_button;
 
 static GtkWindow *onboard_window;
 
+#define MAX_SCREENS 5
+static GtkWindow *bg_window[MAX_SCREENS];
+
 /* Pending Questions */
 static GSList *pending_questions = NULL;
 
@@ -442,20 +445,6 @@ get_absolute_position (const DimensionPosition *p, gint screen, gint window)
         return screen - window;
     else
         return x;
-}
-
-static void
-center_window (GtkWindow *window, GtkAllocation *unused, const WindowPosition *pos)
-{   
-    GtkAllocation allocation;
-    GdkRectangle monitor_geometry;
-    if (wayland) return;
-
-    gdk_monitor_get_geometry (gdk_display_get_primary_monitor (gdk_display_get_default ()), &monitor_geometry);
-    gtk_widget_get_allocation (GTK_WIDGET (window), &allocation);
-    gtk_window_move (window,
-                     monitor_geometry.x + get_absolute_position (&pos->x, monitor_geometry.width, allocation.width),
-                     monitor_geometry.y + get_absolute_position (&pos->y, monitor_geometry.height, allocation.height));
 }
 
 static void draw_background (cairo_t *c, GdkPixbuf *bg, gint m_width, gint m_height)
@@ -1475,7 +1464,7 @@ static void draw_windows (void)
     GtkCellRenderer *renderer;
     GtkBuilder *builder;
     gint monitor;
-    GtkWidget *window;
+    GtkAllocation allocation;
 
     builder = gtk_builder_new ();
 	gtk_builder_add_from_file (builder, GREETER_DATA_DIR "/pi-greeter.glade", NULL);
@@ -1509,53 +1498,59 @@ static void draw_windows (void)
 
     gtk_builder_connect_signals (builder, greeter);
 
-    if (wayland)
+    if (!wayland)
+    {
+        gtk_widget_show (GTK_WIDGET (login_window));
+        gdk_monitor_get_geometry (gdk_display_get_primary_monitor (display), &monitor_geometry);
+        gtk_widget_get_allocation (GTK_WIDGET (login_window), &allocation);
+        gtk_window_move (login_window,
+            monitor_geometry.x + get_absolute_position (&(main_window_pos.x), monitor_geometry.width, allocation.width),
+            monitor_geometry.y + get_absolute_position (&(main_window_pos.y), monitor_geometry.height, allocation.height));
+    }
+    else
     {
         gtk_layer_init_for_window (GTK_WINDOW (login_window));
         gtk_layer_set_layer (GTK_WINDOW (login_window), GTK_LAYER_SHELL_LAYER_TOP);
-        gtk_layer_set_monitor (GTK_WINDOW (login_window), gdk_display_get_monitor (display, 0));
+        gtk_layer_set_monitor (GTK_WINDOW (login_window), gdk_display_get_primary_monitor (display));
         gtk_layer_set_keyboard_interactivity (GTK_WINDOW (login_window), TRUE);
         gtk_window_set_decorated (login_window, TRUE);
+        gtk_widget_show (GTK_WIDGET (login_window));
     }
 
-    gtk_widget_show (GTK_WIDGET (login_window));
-    center_window (login_window, NULL, &main_window_pos);
-    g_signal_connect (GTK_WIDGET (login_window), "size-allocate", G_CALLBACK (center_window), &main_window_pos);
-
-    gtk_widget_show (GTK_WIDGET (login_window));
     gtk_widget_hide (GTK_WIDGET (info_bar));
 
     /* Background windows */
     for (monitor = 0; monitor < gdk_display_get_n_monitors (display); monitor++)
     {
+        if (monitor >= MAX_SCREENS) break;
         gdk_monitor_get_geometry (gdk_display_get_monitor (display, monitor), &monitor_geometry);
 
-        window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
-        gtk_window_set_type_hint (GTK_WINDOW (window), GDK_WINDOW_TYPE_HINT_DESKTOP);
-        gtk_window_set_keep_below (GTK_WINDOW (window), TRUE);
-        gtk_window_set_resizable (GTK_WINDOW (window), FALSE);
-        gtk_widget_set_app_paintable (GTK_WIDGET (window), TRUE);
+        bg_window[monitor] = GTK_WINDOW (gtk_window_new (GTK_WINDOW_TOPLEVEL));
+        gtk_window_set_type_hint (bg_window[monitor], GDK_WINDOW_TYPE_HINT_DESKTOP);
+        gtk_window_set_keep_below (bg_window[monitor], TRUE);
+        gtk_window_set_resizable (bg_window[monitor], FALSE);
+        gtk_widget_set_app_paintable (GTK_WIDGET (bg_window[monitor]), TRUE);
         if (!wayland)
         {
-            gtk_widget_set_size_request (window, monitor_geometry.width, monitor_geometry.height);
-            gtk_window_move (GTK_WINDOW (window), monitor_geometry.x, monitor_geometry.y);
+            gtk_widget_set_size_request (GTK_WIDGET (bg_window[monitor]), monitor_geometry.width, monitor_geometry.height);
+            gtk_window_move (bg_window[monitor], monitor_geometry.x, monitor_geometry.y);
         }
         else
         {
-            gtk_window_set_default_size (GTK_WINDOW (window), monitor_geometry.width, monitor_geometry.height);
-            gtk_layer_init_for_window (GTK_WINDOW (window));
-            gtk_layer_set_layer (GTK_WINDOW (window), GTK_LAYER_SHELL_LAYER_BACKGROUND);
-            gtk_layer_set_monitor (GTK_WINDOW (window), gdk_display_get_monitor (display, monitor));
-            gtk_layer_set_anchor (GTK_WINDOW (window), GTK_LAYER_SHELL_EDGE_TOP, TRUE);
-            gtk_layer_set_anchor (GTK_WINDOW (window), GTK_LAYER_SHELL_EDGE_BOTTOM, TRUE);
-            gtk_layer_set_anchor (GTK_WINDOW (window), GTK_LAYER_SHELL_EDGE_LEFT, TRUE);
-            gtk_layer_set_anchor (GTK_WINDOW (window), GTK_LAYER_SHELL_EDGE_RIGHT, TRUE);
+            gtk_window_set_default_size (bg_window[monitor], monitor_geometry.width, monitor_geometry.height);
+            gtk_layer_init_for_window (bg_window[monitor]);
+            gtk_layer_set_layer (bg_window[monitor], GTK_LAYER_SHELL_LAYER_BACKGROUND);
+            gtk_layer_set_monitor (bg_window[monitor], gdk_display_get_monitor (display, monitor));
+            gtk_layer_set_anchor (bg_window[monitor], GTK_LAYER_SHELL_EDGE_TOP, TRUE);
+            gtk_layer_set_anchor (bg_window[monitor], GTK_LAYER_SHELL_EDGE_BOTTOM, TRUE);
+            gtk_layer_set_anchor (bg_window[monitor], GTK_LAYER_SHELL_EDGE_LEFT, TRUE);
+            gtk_layer_set_anchor (bg_window[monitor], GTK_LAYER_SHELL_EDGE_RIGHT, TRUE);
         }
 
-        gtk_widget_show (window);
-        gtk_window_set_decorated (GTK_WINDOW (window), FALSE);
-        g_signal_connect (G_OBJECT (window), "draw", G_CALLBACK (background_window_draw), NULL);
-        gtk_widget_queue_draw (GTK_WIDGET(window));
+        gtk_widget_show (GTK_WIDGET (bg_window[monitor]));
+        gtk_window_set_decorated (bg_window[monitor], FALSE);
+        g_signal_connect (G_OBJECT (bg_window[monitor]), "draw", G_CALLBACK (background_window_draw), NULL);
+        gtk_widget_queue_draw (GTK_WIDGET (bg_window[monitor]));
     }
 
     if (!wayland)
@@ -1571,8 +1566,16 @@ static void draw_windows (void)
     g_object_unref (builder);
 }
 
-static void on_mon_add (GdkDisplay *, GdkMonitor *, gpointer)
+static void on_mon_add (GdkDisplay *display, GdkMonitor *, gpointer)
 {
+    gint monitor;
+
+    gtk_widget_destroy (GTK_WIDGET (login_window));
+    for (monitor = 0; monitor < gdk_display_get_n_monitors (display); monitor++)
+    {
+        if (monitor >= MAX_SCREENS) break;
+        gtk_widget_destroy (GTK_WIDGET (bg_window[monitor]));
+    }
     draw_windows ();
 }
 
