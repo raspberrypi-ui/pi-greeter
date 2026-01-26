@@ -67,6 +67,7 @@ static gchar *current_language;
 
 /* Screensaver values */
 int timeout, interval, prefer_blanking, allow_exposures;
+int screensaver_timeout;
 
 static GdkRGBA *default_background_color = NULL;
 static gboolean cancelling = FALSE, prompted = FALSE;
@@ -1359,6 +1360,121 @@ focus_upon_map (GdkXEvent *gxevent, GdkEvent *event, gpointer  data)
     return GDK_FILTER_CONTINUE;
 }
 
+static void read_config (void)
+{
+    GKeyFile *config;
+    GdkRGBA background_color;
+    gchar *value;
+    GError *error = NULL;
+
+    config = g_key_file_new ();
+    g_key_file_load_from_file (config, CONFIG_FILE, G_KEY_FILE_NONE, &error);
+    if (error && !g_error_matches (error, G_FILE_ERROR, G_FILE_ERROR_NOENT))
+        g_warning ("Failed to load configuration from %s: %s\n", CONFIG_FILE, error->message);
+    g_clear_error (&error);
+
+    /* Get background colour */
+    value = g_key_file_get_value (config, "greeter", "desktop_bg", NULL);
+    if (!value || !gdk_rgba_parse (&background_color, value))
+            gdk_rgba_parse (&background_color, "#C0C0C0");
+    if (value) g_free (value);
+    default_background_color = gdk_rgba_copy (&background_color);
+
+    /* Get background image */
+    value = g_key_file_get_value (config, "greeter", "wallpaper", NULL);
+    if (value)
+    {
+        g_debug ("Loading background %s", value);
+        // Need to add an alpha channel here to make redraw work properly...
+        default_background_pixbuf = gdk_pixbuf_add_alpha (gdk_pixbuf_new_from_file (value, &error), FALSE, 0, 0, 0);
+        if (!default_background_pixbuf)
+            g_warning ("Failed to load background: %s", error->message);
+        g_clear_error (&error);
+        g_free (value);
+    }
+
+    /* Get display mode */
+    value = g_key_file_get_value (config, "greeter", "wallpaper_mode", NULL);
+    if (value)
+    {
+        wp_mode = g_strdup (value);
+        g_free (value);
+    }
+    else wp_mode = g_strdup ("color");
+
+    /* Set GTK+ settings */
+    value = g_key_file_get_value (config, "greeter", "gtk-theme-name", NULL);
+    if (value)
+    {
+        g_debug ("Using Gtk+ theme %s", value);
+        g_object_set (gtk_settings_get_default (), "gtk-theme-name", value, NULL);
+        g_free (value);
+    }
+
+    value = g_key_file_get_value (config, "greeter", "gtk-icon-theme-name", NULL);
+    if (value)
+    {
+        g_debug ("Using icon theme %s", value);
+        g_object_set (gtk_settings_get_default (), "gtk-icon-theme-name", value, NULL);
+        g_free (value);
+    }
+
+    value = g_key_file_get_value (config, "greeter", "gtk-font-name", NULL);
+    if (value) g_debug ("Using font %s", value);
+    else value = g_strdup ("Sans 10");
+    g_object_set (gtk_settings_get_default (), "gtk-font-name", value, NULL);
+    g_free (value);
+
+    gchar* end_ptr = NULL;
+    screensaver_timeout = 60;
+    value = g_key_file_get_value (config, "greeter", "screensaver-timeout", NULL);
+    if (value)
+        screensaver_timeout = g_ascii_strtoll (value, &end_ptr, 0);
+    g_free (value);
+
+    value = g_key_file_get_value (config, "greeter", "default-user-image", NULL);
+    if (value)
+    {
+        if (value[0] == '#')
+            default_user_icon = g_strdup (value + 1);
+        else
+        {
+            default_user_pixbuf = gdk_pixbuf_new_from_file_at_scale (value, -1, 80, TRUE, &error);
+            if (!default_user_pixbuf)
+            {
+                g_warning ("Failed to load default user image: %s", error->message);
+                g_clear_error (&error);
+            }
+        }
+        g_free (value);
+    }
+
+    /* Window position */
+    /* Default: x-center, y-center */
+    main_window_pos = CENTERED_WINDOW_POS;
+    value = g_key_file_get_value (config, "greeter", "position", NULL);
+    if (value)
+    {
+        gchar *x = value;
+        gchar *y = strchr(value, ' ');
+        if (y)
+            (y++)[0] = '\0';
+
+        if (read_position_from_str (x, &main_window_pos.x))
+            /* If there is no y-part then y = x */
+            if (!y || !read_position_from_str (y, &main_window_pos.y))
+                main_window_pos.y = main_window_pos.x;
+
+        g_free (value);
+    }
+
+#ifdef START_INDICATOR_SERVICES
+    init_indicators (config, &indicator_pid, &spi_pid);
+#else
+    init_indicators (config);
+#endif
+}
+
 static void draw_windows (void)
 {
     GdkDisplay *display = gdk_display_get_default ();
@@ -1470,9 +1586,7 @@ static void on_mon_add (GdkDisplay *, GdkMonitor *, gpointer)
 int
 main (int argc, char **argv)
 {
-    GKeyFile *config;
-    gchar *value, *state_dir;
-    GdkRGBA background_color;
+    gchar *state_dir;
     GError *error = NULL;
 
     Display* display;
@@ -1500,12 +1614,6 @@ main (int argc, char **argv)
     /* init gtk */
     gtk_init (&argc, &argv);
     
-    config = g_key_file_new ();
-    g_key_file_load_from_file (config, CONFIG_FILE, G_KEY_FILE_NONE, &error);
-    if (error && !g_error_matches (error, G_FILE_ERROR, G_FILE_ERROR_NOENT))
-        g_warning ("Failed to load configuration from %s: %s\n", CONFIG_FILE, error->message);
-    g_clear_error (&error);
-
     state_dir = g_build_filename (g_get_user_cache_dir (), "pi-greeter", NULL);
     g_mkdir_with_parents (state_dir, 0775);
     state_filename = g_build_filename (state_dir, "state", NULL);
@@ -1528,114 +1636,14 @@ main (int argc, char **argv)
     /* Set default cursor */
     gdk_window_set_cursor (gdk_get_default_root_window (), gdk_cursor_new_for_display (gdk_display_get_default (), GDK_LEFT_PTR));
 
-    /* Get background colour */
-    value = g_key_file_get_value (config, "greeter", "desktop_bg", NULL);
-    if (!value || !gdk_rgba_parse (&background_color, value))
-            gdk_rgba_parse (&background_color, "#C0C0C0");
-    if (value) g_free (value);
-    default_background_color = gdk_rgba_copy (&background_color);
-
-    /* Get background image */
-    value = g_key_file_get_value (config, "greeter", "wallpaper", NULL);
-    if (value)
-    {
-        GError *error = NULL;
-        g_debug ("Loading background %s", value);
-        // Need to add an alpha channel here to make redraw work properly...
-        default_background_pixbuf = gdk_pixbuf_add_alpha (gdk_pixbuf_new_from_file (value, &error), FALSE, 0, 0, 0);
-        if (!default_background_pixbuf)
-            g_warning ("Failed to load background: %s", error->message);
-        g_clear_error (&error);
-        g_free (value);
-    }
-
-    /* Get display mode */
-    value = g_key_file_get_value (config, "greeter", "wallpaper_mode", NULL);
-    if (value)
-    {
-        wp_mode = g_strdup (value);
-        g_free (value);
-    }
-    else wp_mode = g_strdup ("color");
-
-    /* Set GTK+ settings */
-    value = g_key_file_get_value (config, "greeter", "gtk-theme-name", NULL);
-    if (value)
-    {
-        g_debug ("Using Gtk+ theme %s", value);
-        g_object_set (gtk_settings_get_default (), "gtk-theme-name", value, NULL);
-        g_free (value);
-    }
-
-    value = g_key_file_get_value (config, "greeter", "gtk-icon-theme-name", NULL);
-    if (value)
-    {
-        g_debug ("Using icon theme %s", value);
-        g_object_set (gtk_settings_get_default (), "gtk-icon-theme-name", value, NULL);
-        g_free (value);
-    }
-
-    value = g_key_file_get_value (config, "greeter", "gtk-font-name", NULL);
-    if (value) g_debug ("Using font %s", value);
-    else value = g_strdup ("Sans 10");
-    g_object_set (gtk_settings_get_default (), "gtk-font-name", value, NULL);
-    g_free (value);
+    read_config ();
 
     /* Make the greeter behave a bit more like a screensaver if used as un/lock-screen by blanking the screen */
-    gchar* end_ptr = NULL;
-    int screensaver_timeout = 60;
-    value = g_key_file_get_value (config, "greeter", "screensaver-timeout", NULL);
-    if (value)
-        screensaver_timeout = g_ascii_strtoll (value, &end_ptr, 0);
-    g_free (value);
-
     display = gdk_x11_display_get_xdisplay(gdk_display_get_default ());
     if (!wayland && lightdm_greeter_get_lock_hint (greeter)) {
         XGetScreenSaver(display, &timeout, &interval, &prefer_blanking, &allow_exposures);
         XForceScreenSaver(display, ScreenSaverActive);
         XSetScreenSaver(display, screensaver_timeout, 0, ScreenSaverActive, DefaultExposures);
-    }
-
-#ifdef START_INDICATOR_SERVICES
-    init_indicators (config, &indicator_pid, &spi_pid);
-#else
-    init_indicators (config);
-#endif
-
-    value = g_key_file_get_value (config, "greeter", "default-user-image", NULL);
-    if (value)
-    {
-        if (value[0] == '#')
-            default_user_icon = g_strdup (value + 1);
-        else
-        {
-            default_user_pixbuf = gdk_pixbuf_new_from_file_at_scale (value, -1, 80, TRUE, &error);
-            if (!default_user_pixbuf)
-            {
-                g_warning ("Failed to load default user image: %s", error->message);
-                g_clear_error (&error);
-            }
-        }
-        g_free (value);
-    }
-
-    /* Window position */
-    /* Default: x-center, y-center */
-    main_window_pos = CENTERED_WINDOW_POS;
-    value = g_key_file_get_value (config, "greeter", "position", NULL);
-    if (value)
-    {
-        gchar *x = value;
-        gchar *y = strchr(value, ' ');
-        if (y)
-            (y++)[0] = '\0';
-        
-        if (read_position_from_str (x, &main_window_pos.x))
-            /* If there is no y-part then y = x */
-            if (!y || !read_position_from_str (y, &main_window_pos.y))
-                main_window_pos.y = main_window_pos.x;
-
-        g_free (value);
     }
 
     draw_windows ();
