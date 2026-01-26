@@ -1363,9 +1363,10 @@ focus_upon_map (GdkXEvent *gxevent, GdkEvent *event, gpointer  data)
 static void read_config (void)
 {
     GKeyFile *config;
+    GError *error = NULL;
+    GdkPixbuf *background_pixbuf;
     GdkRGBA background_color;
     gchar *value;
-    GError *error = NULL;
 
     config = g_key_file_new ();
     g_key_file_load_from_file (config, CONFIG_FILE, G_KEY_FILE_NONE, &error);
@@ -1374,10 +1375,13 @@ static void read_config (void)
     g_clear_error (&error);
 
     /* Get background colour */
+    gdk_rgba_parse (&background_color, "#C0C0C0");
     value = g_key_file_get_value (config, "greeter", "desktop_bg", NULL);
-    if (!value || !gdk_rgba_parse (&background_color, value))
-            gdk_rgba_parse (&background_color, "#C0C0C0");
-    if (value) g_free (value);
+    if (value)
+    {
+        gdk_rgba_parse (&background_color, value);
+        g_free (value);
+    }
     default_background_color = gdk_rgba_copy (&background_color);
 
     /* Get background image */
@@ -1385,11 +1389,13 @@ static void read_config (void)
     if (value)
     {
         g_debug ("Loading background %s", value);
-        // Need to add an alpha channel here to make redraw work properly...
-        default_background_pixbuf = gdk_pixbuf_add_alpha (gdk_pixbuf_new_from_file (value, &error), FALSE, 0, 0, 0);
-        if (!default_background_pixbuf)
-            g_warning ("Failed to load background: %s", error->message);
-        g_clear_error (&error);
+        background_pixbuf = gdk_pixbuf_new_from_file (value, NULL);
+        if (background_pixbuf)
+        {
+            /* Need to add an alpha channel here to make redraw work properly */
+            default_background_pixbuf = gdk_pixbuf_add_alpha (background_pixbuf, FALSE, 0, 0, 0);
+            g_object_unref (background_pixbuf);
+        }
         g_free (value);
     }
 
@@ -1397,6 +1403,7 @@ static void read_config (void)
     value = g_key_file_get_value (config, "greeter", "wallpaper_mode", NULL);
     if (value)
     {
+        g_debug ("Using wallpaper mode %s", value);
         wp_mode = g_strdup (value);
         g_free (value);
     }
@@ -1420,43 +1427,42 @@ static void read_config (void)
     }
 
     value = g_key_file_get_value (config, "greeter", "gtk-font-name", NULL);
-    if (value) g_debug ("Using font %s", value);
-    else value = g_strdup ("Sans 10");
-    g_object_set (gtk_settings_get_default (), "gtk-font-name", value, NULL);
-    g_free (value);
+    if (value)
+    {
+        g_debug ("Using font %s", value);
+        g_object_set (gtk_settings_get_default (), "gtk-font-name", value, NULL);
+        g_free (value);
+    }
+    else g_object_set (gtk_settings_get_default (), "gtk-font-name", "Sans 10", NULL);
 
-    gchar* end_ptr = NULL;
     screensaver_timeout = 60;
     value = g_key_file_get_value (config, "greeter", "screensaver-timeout", NULL);
     if (value)
-        screensaver_timeout = g_ascii_strtoll (value, &end_ptr, 0);
-    g_free (value);
+    {
+        g_debug ("Screensaver timeout %s", value);
+        screensaver_timeout = g_ascii_strtoll (value, NULL, 0);
+        g_free (value);
+    }
 
     value = g_key_file_get_value (config, "greeter", "default-user-image", NULL);
     if (value)
     {
+        g_debug ("Default user image %s", value);
         if (value[0] == '#')
             default_user_icon = g_strdup (value + 1);
         else
-        {
             default_user_pixbuf = gdk_pixbuf_new_from_file_at_scale (value, -1, 80, TRUE, &error);
-            if (!default_user_pixbuf)
-            {
-                g_warning ("Failed to load default user image: %s", error->message);
-                g_clear_error (&error);
-            }
-        }
         g_free (value);
     }
 
-    /* Window position */
-    /* Default: x-center, y-center */
+    /* Window position - default: x-center, y-center */
     main_window_pos = CENTERED_WINDOW_POS;
     value = g_key_file_get_value (config, "greeter", "position", NULL);
     if (value)
     {
+        g_debug ("Window position %s", value);
         gchar *x = value;
-        gchar *y = strchr(value, ' ');
+        gchar *y = strchr (value, ' ');
         if (y)
             (y++)[0] = '\0';
 
@@ -1473,6 +1479,8 @@ static void read_config (void)
 #else
     init_indicators (config);
 #endif
+
+    g_key_file_free (config);
 }
 
 static void draw_windows (void)
@@ -1589,11 +1597,9 @@ main (int argc, char **argv)
     gchar *state_dir;
     GError *error = NULL;
 
-    Display* display;
-
-    #ifdef START_INDICATOR_SERVICES
+#ifdef START_INDICATOR_SERVICES
     GPid indicator_pid = 0, spi_pid = 0;
-    #endif
+#endif
 
     if (getenv ("WAYLAND_DISPLAY")) wayland = TRUE;
 
@@ -1609,7 +1615,7 @@ main (int argc, char **argv)
     bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
     textdomain (GETTEXT_PACKAGE);
 
-    g_unix_signal_add(SIGTERM, (GSourceFunc)gtk_main_quit, NULL);
+    g_unix_signal_add (SIGTERM, (GSourceFunc) gtk_main_quit, NULL);
 
     /* init gtk */
     gtk_init (&argc, &argv);
@@ -1630,8 +1636,7 @@ main (int argc, char **argv)
     g_signal_connect (greeter, "show-message", G_CALLBACK (show_message_cb), NULL);
     g_signal_connect (greeter, "authentication-complete", G_CALLBACK (authentication_complete_cb), NULL);
     g_signal_connect (greeter, "autologin-timer-expired", G_CALLBACK (lightdm_greeter_authenticate_autologin), NULL);
-    if (!lightdm_greeter_connect_sync (greeter, NULL))
-        return EXIT_FAILURE;
+    if (!lightdm_greeter_connect_sync (greeter, NULL)) return EXIT_FAILURE;
 
     /* Set default cursor */
     gdk_window_set_cursor (gdk_get_default_root_window (), gdk_cursor_new_for_display (gdk_display_get_default (), GDK_LEFT_PTR));
@@ -1639,11 +1644,12 @@ main (int argc, char **argv)
     read_config ();
 
     /* Make the greeter behave a bit more like a screensaver if used as un/lock-screen by blanking the screen */
-    display = gdk_x11_display_get_xdisplay(gdk_display_get_default ());
-    if (!wayland && lightdm_greeter_get_lock_hint (greeter)) {
-        XGetScreenSaver(display, &timeout, &interval, &prefer_blanking, &allow_exposures);
-        XForceScreenSaver(display, ScreenSaverActive);
-        XSetScreenSaver(display, screensaver_timeout, 0, ScreenSaverActive, DefaultExposures);
+    Display *display = gdk_x11_display_get_xdisplay (gdk_display_get_default ());
+    if (!wayland && lightdm_greeter_get_lock_hint (greeter))
+    {
+        XGetScreenSaver (display, &timeout, &interval, &prefer_blanking, &allow_exposures);
+        XForceScreenSaver (display, ScreenSaverActive);
+        XSetScreenSaver (display, screensaver_timeout, 0, ScreenSaverActive, DefaultExposures);
     }
 
     draw_windows ();
@@ -1666,20 +1672,19 @@ main (int argc, char **argv)
     }
 #endif
 
-    if (default_background_pixbuf)
-        g_object_unref (default_background_pixbuf);
-    if (default_background_color)
-        gdk_rgba_free (default_background_color);
+    if (default_background_pixbuf) g_object_unref (default_background_pixbuf);
+    if (default_background_color) gdk_rgba_free (default_background_color);
+    if (default_user_pixbuf) g_object_unref (default_user_pixbuf);
 
     if (!wayland)
     {
-	int screen = XDefaultScreen (display);
-	Window w = RootWindow (display, screen);
-	Atom id = XInternAtom (display, "AT_SPI_BUS", True);
-	if (id != None)
+        int screen = XDefaultScreen (display);
+        Window w = RootWindow (display, screen);
+        Atom id = XInternAtom (display, "AT_SPI_BUS", True);
+        if (id != None)
 	    {
-		XDeleteProperty (display, w, id);
-		XSync (display, FALSE);
+            XDeleteProperty (display, w, id);
+            XSync (display, FALSE);
 	    }
     }
 
