@@ -1,4 +1,4 @@
-pi-greeter (1.1) UNRELEASED; urgency=medium
+pi-greeter (1.1) trixie; urgency=medium
 
   * Fix for greeter not being redisplayed after switching TTY
 

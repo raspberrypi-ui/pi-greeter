@@ -1289,7 +1289,7 @@ main (int argc, char **argv)
 
     /* init gtk */
     gtk_init (&argc, &argv);
-    
+
     state_dir = g_build_filename (g_get_user_cache_dir (), "pi-greeter", NULL);
     g_mkdir_with_parents (state_dir, 0775);
     state_filename = g_build_filename (state_dir, "state", NULL);
@@ -1302,7 +1302,7 @@ main (int argc, char **argv)
     g_clear_error (&error);
 
     greeter = lightdm_greeter_new ();
-    g_signal_connect (greeter, "show-prompt", G_CALLBACK (show_prompt_cb), NULL);  
+    g_signal_connect (greeter, "show-prompt", G_CALLBACK (show_prompt_cb), NULL);
     g_signal_connect (greeter, "show-message", G_CALLBACK (show_message_cb), NULL);
     g_signal_connect (greeter, "authentication-complete", G_CALLBACK (authentication_complete_cb), NULL);
     g_signal_connect (greeter, "autologin-timer-expired", G_CALLBACK (lightdm_greeter_authenticate_autologin), NULL);
