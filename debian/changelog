@@ -1,3 +1,9 @@
+pi-greeter (1.1) UNRELEASED; urgency=medium
+
+  * Fix for greeter not being redisplayed after switching TTY
+
+ -- Simon Long <simon@raspberrypi.com>  Tue, 27 Jan 2026 09:30:23 +0000
+
 pi-greeter (1.0) trixie; urgency=medium
 
   * Trixie version
