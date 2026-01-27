@@ -43,10 +43,6 @@ static gchar *state_filename;
 /* Defaults */
 static GdkPixbuf *default_background_pixbuf = NULL;
 
-/* Panel Widgets */
-static GtkWidget *menubar, *power_menuitem, *session_menuitem, *language_menuitem;
-static GtkMenu *session_menu, *language_menu;
-
 /* Login Window Widgets */
 static GtkWindow *login_window;
 static GtkImage *user_image;
@@ -118,114 +114,6 @@ pam_message_finalize (PAMConversationMessage *message)
     g_free (message);
 }
 
-
-static void
-add_indicator_to_panel (GtkWidget *indicator_item, gint index)
-{
-    gint insert_pos = 0;
-    GList* items = gtk_container_get_children (GTK_CONTAINER (menubar));
-    GList* item;
-    for (item = items; item; item = item->next)
-    {
-        if (GPOINTER_TO_INT (g_object_get_data (G_OBJECT (item->data), "indicator-custom-index-data")) < index)
-            break;
-        insert_pos++;
-    }
-    g_list_free (items);
-
-    gtk_menu_shell_insert (GTK_MENU_SHELL (menubar), GTK_WIDGET (indicator_item), insert_pos);
-}
-
-
-static gboolean
-menu_item_accel_closure_cb (GtkAccelGroup *accel_group,
-                            GObject *acceleratable, guint keyval,
-                            GdkModifierType modifier, gpointer data)
-{
-    gtk_menu_item_activate (data);
-    return FALSE;
-}
-
-/* Maybe unnecessary (in future) trick to enable accelerators for hidden/detached menu items */
-static void
-reassign_menu_item_accel (GtkWidget *item)
-{
-    GtkAccelKey key;
-    const gchar *accel_path = gtk_menu_item_get_accel_path (GTK_MENU_ITEM (item));
-
-    if (accel_path && gtk_accel_map_lookup_entry (accel_path, &key))
-    {
-        GClosure *closure = g_cclosure_new (G_CALLBACK (menu_item_accel_closure_cb), item, NULL);
-        gtk_accel_group_connect (gtk_menu_get_accel_group (GTK_MENU (gtk_widget_get_parent (item))),
-                                 key.accel_key, key.accel_mods, key.accel_flags, closure);
-        g_closure_unref (closure);
-    }
-
-    gtk_container_foreach (GTK_CONTAINER (gtk_menu_item_get_submenu (GTK_MENU_ITEM (item))),
-                           (GtkCallback)reassign_menu_item_accel, NULL);
-}
-
-static void
-init_indicators (GKeyFile* config)
-{
-    gchar **names = NULL;
-    gsize length = 0;
-    guint i;
-    GHashTable *builtin_items = NULL;
-    GHashTableIter iter;
-    gpointer iter_value;
-    gboolean fallback = FALSE;
-
-    if (g_key_file_has_key (config, "greeter", "indicators", NULL))
-    {   /* no option = default list, empty value = empty list */
-        names = g_key_file_get_string_list (config, "greeter", "indicators", &length, NULL);
-    }
-    else if (g_key_file_has_key (config, "greeter", "show-indicators", NULL))
-    {   /* fallback mode: no option = empty value = default list */
-        names = g_key_file_get_string_list (config, "greeter", "show-indicators", &length, NULL);
-        if (length == 0)
-            fallback = TRUE;
-    }
-
-    if (names && !fallback)
-    {
-        builtin_items = g_hash_table_new (g_str_hash, g_str_equal);
-
-        g_hash_table_insert (builtin_items, "~power", power_menuitem);
-        g_hash_table_insert (builtin_items, "~session", session_menuitem);
-        g_hash_table_insert (builtin_items, "~language", language_menuitem);
-
-        g_hash_table_iter_init (&iter, builtin_items);
-        while (g_hash_table_iter_next (&iter, NULL, &iter_value))
-            gtk_container_remove (GTK_CONTAINER (menubar), iter_value);
-    }
-
-    for (i = 0; i < length; ++i)
-    {
-        if (names[i][0] == '~' && g_hash_table_lookup_extended (builtin_items, names[i], NULL, &iter_value))
-        {   /* Built-in indicators */
-            g_object_set_data (G_OBJECT (iter_value), "indicator-custom-index-data", GINT_TO_POINTER (i));
-            add_indicator_to_panel (iter_value, i);
-            g_hash_table_remove (builtin_items, (gconstpointer)names[i]);
-            continue;
-        }
-    }
-    if (names)
-        g_strfreev (names);
-
-    if (builtin_items)
-    {
-        g_hash_table_iter_init (&iter, builtin_items);
-        while (g_hash_table_iter_next (&iter, NULL, &iter_value))
-        {
-            reassign_menu_item_accel (iter_value);
-            gtk_widget_hide (iter_value);
-        }
-
-        g_hash_table_unref (builtin_items);
-    }
-}
-
 static gboolean
 is_valid_session (GList* items, const gchar* session)
 {
@@ -271,23 +159,6 @@ set_session (const gchar *session)
         }
     }
 
-    if (gtk_widget_get_visible (session_menuitem))
-    {
-        GList *menu_iter = NULL;
-        GList *menu_items = gtk_container_get_children (GTK_CONTAINER (session_menu));
-        if (session)
-        {
-            for (menu_iter = menu_items; menu_iter != NULL; menu_iter = g_list_next(menu_iter))
-                if (g_strcmp0 (session, g_object_get_data (G_OBJECT (menu_iter->data), "session-key")) == 0)
-                {
-                    break;
-                }
-        }
-        if (!menu_iter)
-            menu_iter = menu_items;
-        gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(menu_iter->data), TRUE);
-    }
-
     g_free (current_session);
     current_session = g_strdup(session);
     g_free (last_session);
@@ -296,20 +167,9 @@ set_session (const gchar *session)
 static gchar *
 get_language (void)
 {
-    GList *menu_items, *menu_iter;
-
     /* if the user manually selected a language, use it */
     if (current_language)
         return g_strdup (current_language);
-
-    menu_items = gtk_container_get_children(GTK_CONTAINER(language_menu));    
-    for (menu_iter = menu_items; menu_iter != NULL; menu_iter = g_list_next(menu_iter))
-    {
-        if (gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(menu_iter->data)))
-        {
-            return g_strdup(g_object_get_data (G_OBJECT (menu_iter->data), "language-code"));
-        }
-    }
 
     return NULL;
 }
@@ -317,53 +177,8 @@ get_language (void)
 static void
 set_language (const gchar *language)
 {
-    const gchar *default_language = NULL;    
-    GList *menu_items, *menu_iter;
-
-    if (!gtk_widget_get_visible (language_menuitem))
-    {
-        g_free (current_language);
-        current_language = g_strdup (language);
-        return;
-    }
-
-    menu_items = gtk_container_get_children(GTK_CONTAINER(language_menu));
-
-    if (language)
-    {
-        for (menu_iter = menu_items; menu_iter != NULL; menu_iter = g_list_next(menu_iter))
-        {
-            gchar *s;
-            gboolean matched;
-            s = g_strdup(g_object_get_data (G_OBJECT (menu_iter->data), "language-code"));
-            matched = g_strcmp0 (s, language) == 0;
-            g_free (s);
-            if (matched)
-            {
-                gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(menu_iter->data), TRUE);
-                g_free (current_language);
-                current_language = g_strdup(language);
-                gtk_menu_item_set_label(GTK_MENU_ITEM(language_menuitem),language);
-                return;
-            }
-        }
-    }
-
-    /* If failed to find this language, then try the default */
-    if (lightdm_get_language ()) {
-        default_language = lightdm_language_get_code (lightdm_get_language ());
-        gtk_menu_item_set_label(GTK_MENU_ITEM (language_menuitem), default_language);
-    }
-    if (default_language && g_strcmp0 (default_language, language) != 0)
-        set_language (default_language);
-    /* If all else fails, just use the first language from the menu */
-    else {
-        for (menu_iter = menu_items; menu_iter != NULL; menu_iter = g_list_next(menu_iter))
-        {
-            if (gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(menu_iter->data)))
-                gtk_menu_item_set_label(GTK_MENU_ITEM(language_menuitem), g_strdup(g_object_get_data (G_OBJECT (menu_iter->data), "language-code")));
-        }
-    }
+    g_free (current_language);
+    current_language = g_strdup (language);
 }
 
 static void
@@ -388,9 +203,6 @@ set_login_button_label (LightDMGreeter *greeter, const gchar *username)
         gtk_button_set_label (login_button, _("Log In"));
     gtk_widget_set_can_default (GTK_WIDGET (login_button), TRUE);
     gtk_widget_grab_default (GTK_WIDGET (login_button));
-    /* and disable the session and language widgets */
-    gtk_widget_set_sensitive (GTK_WIDGET (session_menuitem), !logged_in);
-    gtk_widget_set_sensitive (GTK_WIDGET (language_menuitem), !logged_in);
 }
 
 static void
@@ -722,53 +534,6 @@ username_key_press_cb (GtkWidget *widget, GdkEventKey *event, gpointer user_data
     }
     else
         return FALSE;
-}
-
-gboolean
-menubar_key_press_cb (GtkWidget *widget, GdkEventKey *event, gpointer user_data);
-G_MODULE_EXPORT
-gboolean
-menubar_key_press_cb (GtkWidget *widget, GdkEventKey *event, gpointer user_data)
-{
-    switch (event->keyval)
-    {
-    case GDK_KEY_Tab: case GDK_KEY_Escape:
-    case GDK_KEY_Super_L: case GDK_KEY_Super_R:
-    case GDK_KEY_F9: case GDK_KEY_F10:
-    case GDK_KEY_F11: case GDK_KEY_F12:
-        gtk_menu_shell_cancel (GTK_MENU_SHELL (menubar));
-        gtk_window_present (login_window);
-        return TRUE;
-    default:
-        return FALSE;
-    };
-}
-
-gboolean
-login_window_key_press_cb (GtkWidget *widget, GdkEventKey *event, gpointer user_data);
-G_MODULE_EXPORT
-gboolean
-login_window_key_press_cb (GtkWidget *widget, GdkEventKey *event, gpointer user_data)
-{
-    GtkWidget *item = NULL;
-    return FALSE;
-
-    if (event->keyval == GDK_KEY_F9)
-        item = session_menuitem;
-    else if (event->keyval == GDK_KEY_F10)
-        item = language_menuitem;
-    else if (event->keyval == GDK_KEY_F12)
-        item = power_menuitem;
-    else if (event->keyval != GDK_KEY_Escape &&
-             event->keyval != GDK_KEY_Super_L &&
-             event->keyval != GDK_KEY_Super_R)
-        return FALSE;
-
-    if (GTK_IS_MENU_ITEM (item) && gtk_widget_is_sensitive (item) && gtk_widget_get_visible (item))
-        gtk_menu_shell_select_item (GTK_MENU_SHELL (menubar), item);
-    else
-        gtk_menu_shell_select_first (GTK_MENU_SHELL (menubar), TRUE);
-    return TRUE;
 }
 
 static void set_displayed_user (LightDMGreeter *greeter, gchar *username)
@@ -1374,8 +1139,6 @@ static void read_config (void)
 
         g_free (value);
     }
-
-    init_indicators (config);
 
     g_key_file_free (config);
 }
