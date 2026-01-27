@@ -651,32 +651,6 @@ start_session (void)
     g_free (session);
 }
 
-void
-session_selected_cb(GtkMenuItem *menuitem, gpointer user_data);
-G_MODULE_EXPORT
-void
-session_selected_cb(GtkMenuItem *menuitem, gpointer user_data)
-{
-    if (gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(menuitem)))
-    {
-       gchar *session = g_object_get_data (G_OBJECT (menuitem), "session-key");
-       set_session(session);
-    }
-}
-
-void
-language_selected_cb(GtkMenuItem *menuitem, gpointer user_data);
-G_MODULE_EXPORT
-void
-language_selected_cb(GtkMenuItem *menuitem, gpointer user_data)
-{
-    if (gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(menuitem)))
-    {
-       gchar *language = g_object_get_data (G_OBJECT (menuitem), "language-code");
-       set_language(language);
-    }
-}
-
 gboolean
 password_key_press_cb (GtkWidget *widget, GdkEventKey *event, gpointer user_data);
 G_MODULE_EXPORT
@@ -1040,37 +1014,6 @@ authentication_complete_cb (LightDMGreeter *greeter)
     }
 }
 
-void suspend_cb (GtkWidget *widget, LightDMGreeter *greeter);
-G_MODULE_EXPORT
-void
-suspend_cb (GtkWidget *widget, LightDMGreeter *greeter)
-{
-    lightdm_suspend (NULL);
-}
-
-void hibernate_cb (GtkWidget *widget, LightDMGreeter *greeter);
-G_MODULE_EXPORT
-void
-hibernate_cb (GtkWidget *widget, LightDMGreeter *greeter)
-{
-    lightdm_hibernate (NULL);
-}
-
-void restart_cb (GtkWidget *widget, LightDMGreeter *greeter);
-G_MODULE_EXPORT
-void
-restart_cb (GtkWidget *widget, LightDMGreeter *greeter)
-{
-    lightdm_restart (NULL);
-}
-
-void shutdown_cb (GtkWidget *widget, LightDMGreeter *greeter);
-G_MODULE_EXPORT
-void
-shutdown_cb (GtkWidget *widget, LightDMGreeter *greeter)
-{
-    lightdm_shutdown (NULL);
-}
 
 static void
 user_added_cb (LightDMUserList *user_list, LightDMUser *user, LightDMGreeter *greeter)
@@ -1148,26 +1091,6 @@ user_removed_cb (LightDMUserList *user_list, LightDMUser *user)
     gtk_list_store_remove (GTK_LIST_STORE (model), &iter);
 }
 
-void a11y_font_cb (GtkCheckMenuItem *item);
-G_MODULE_EXPORT
-void
-a11y_font_cb (GtkCheckMenuItem *item)
-{
-}
-
-void a11y_contrast_cb (GtkCheckMenuItem *item);
-G_MODULE_EXPORT
-void
-a11y_contrast_cb (GtkCheckMenuItem *item)
-{
-}
-
-void a11y_keyboard_cb (GtkCheckMenuItem *item);
-G_MODULE_EXPORT
-void
-a11y_keyboard_cb (GtkCheckMenuItem *item)
-{
-}
 
 static void
 load_user_list (void)
