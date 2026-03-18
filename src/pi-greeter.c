@@ -75,6 +75,8 @@ static gchar *wp_mode = NULL;
 
 static gboolean wayland = FALSE;
 
+static gulong mahandler;
+
 typedef struct
 {
   gboolean is_prompt;
@@ -678,6 +680,7 @@ G_MODULE_EXPORT
 void
 login_cb (GtkWidget *widget)
 {
+    g_signal_handler_block (gdk_display_get_default (), mahandler);
     /* Reset to default screensaver values */
     if (!wayland && lightdm_greeter_get_lock_hint (greeter))
         XSetScreenSaver(gdk_x11_display_get_xdisplay(gdk_display_get_default ()), timeout, interval, prefer_blanking, allow_exposures);        
@@ -1324,7 +1327,7 @@ main (int argc, char **argv)
 
     draw_windows ();
 
-    g_signal_connect (gdk_display_get_default (), "monitor-added", G_CALLBACK (on_mon_add), NULL);
+    mahandler = g_signal_connect (gdk_display_get_default (), "monitor-added", G_CALLBACK (on_mon_add), NULL);
 
     gtk_main ();
 
