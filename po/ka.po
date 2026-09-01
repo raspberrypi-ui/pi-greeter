@@ -1,0 +1,58 @@
+# Georgian translation for pi-greeter.
+# Copyright (C) 2026 pi-greeter's authors.
+# This file is distributed under the same license as the pi-greeter package.
+# Ekaterine Papava <papava.e@gtu.ge>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: pi-greeter\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-03-18 15:22+0100\n"
+"PO-Revision-Date: 2026-08-29 11:07+0200\n"
+"Last-Translator: Ekaterine Papava <papava.e@gtu.ge>\n"
+"Language-Team: Georgian <(nothing)>\n"
+"Language: ka\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Poedit 3.9\n"
+
+#: ../src/pi-greeter.c:203
+msgid "Unlock"
+msgstr "განბლოკვა"
+
+#: ../src/pi-greeter.c:205 ../data/pi-greeter.glade.h:2
+msgid "Log In"
+msgstr "შესვლა"
+
+#: ../src/pi-greeter.c:462
+msgid "Failed to start session"
+msgstr "სესიის გაშვება ჩავარდა"
+
+#: ../src/pi-greeter.c:550
+msgid "Other"
+msgstr "სხვა"
+
+#: ../src/pi-greeter.c:562 ../src/pi-greeter.c:895
+msgid "Guest Session"
+msgstr "სტუმრის სესია"
+
+#: ../src/pi-greeter.c:777
+msgid "Incorrect password, please try again"
+msgstr "პაროლი არასწორია. კიდევ სცადეთ"
+
+#: ../src/pi-greeter.c:781
+msgid "Failed to authenticate"
+msgstr "ავთენტიკაციის შეცდომა"
+
+#: ../src/pi-greeter.c:903
+msgid "Other..."
+msgstr "სხვა..."
+
+#: ../data/pi-greeter.glade.h:1
+msgid "label"
+msgstr "ჭდე"
+
+#: ../data/pi-greeter.glade.h:3
+msgid "Shut Down"
+msgstr "გამორთვა"
